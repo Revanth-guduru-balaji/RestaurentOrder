@@ -1,0 +1,61 @@
+<Window x:Class="RestaurantOrder.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
+        mc:Ignorable="d"
+        ui:WindowHelper.UseModernWindowStyle="True"
+        Title="Settings"
+        Width="540"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource BrandSurfaceBrush}">
+    <StackPanel Margin="22,18">
+        <TextBlock Text="Settings" Style="{StaticResource SectionTitle}" Margin="0,0,0,4" />
+        <TextBlock Text="Receipt header, default printer and print behaviour"
+                   Foreground="{StaticResource BrandSubtleTextBrush}" FontSize="12" Margin="0,0,0,16" />
+
+        <TextBlock Text="Shop name" Margin="0,4,0,4" />
+        <TextBox x:Name="ShopNameBox" />
+
+        <TextBlock Text="Tag line / cuisine (optional)" Margin="0,12,0,4" />
+        <TextBox x:Name="ShopLine2Box" />
+
+        <TextBlock Text="Phone / address (optional)" Margin="0,12,0,4" />
+        <TextBox x:Name="ShopAddressBox" />
+
+        <TextBlock Text="Default printer" Margin="0,16,0,4" />
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ComboBox x:Name="PrinterCombo" />
+            <Button Grid.Column="1" Content="Test print" Style="{StaticResource GhostButton}"
+                    Margin="8,0,0,0" Click="TestPrint_Click" />
+        </Grid>
+        <TextBlock x:Name="PrinterHint" FontSize="11"
+                   Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,4,0,0"
+                   TextWrapping="Wrap" />
+
+        <CheckBox x:Name="AutoPrintBox" Content="Print receipt automatically when order is placed"
+                  Margin="0,16,0,0" />
+        <CheckBox x:Name="CompactBox" Content="Compact receipt (saves paper &amp; ink)"
+                  Margin="0,8,0,0" />
+
+        <Grid Margin="0,24,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="1" Content="Cancel" Style="{StaticResource GhostButton}"
+                    IsCancel="True" Click="Cancel_Click" />
+            <Button Grid.Column="3" Content="Save" Style="{StaticResource PrimaryButton}"
+                    IsDefault="True" Click="Save_Click" />
+        </Grid>
+    </StackPanel>
+</Window>

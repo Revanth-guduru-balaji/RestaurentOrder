@@ -1,0 +1,240 @@
+<UserControl x:Class="RestaurantOrder.Views.DashboardPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:c="clr-namespace:RestaurantOrder.Controls"
+             mc:Ignorable="d"
+             Background="{StaticResource BrandSurfaceBrush}">
+    <UserControl.Resources>
+        <Style x:Key="SegmentRadio" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{StaticResource BrandTextBrush}" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="GroupName" Value="Range" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#FFF3F4F6" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource BrandPrimaryBrush}" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="28,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Dashboard" Style="{StaticResource PageTitle}" />
+                    <TextBlock x:Name="WelcomeText" Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="White" BorderBrush="{StaticResource BrandBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="2"
+                            ClipToBounds="True">
+                        <Border.Resources>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="ClipToBounds" Value="True" />
+                            </Style>
+                        </Border.Resources>
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="RangeToday" Style="{DynamicResource SegmentRadio}" Content="Today" IsChecked="True" Tag="Today" Click="Range_Click" />
+                            <RadioButton Style="{DynamicResource SegmentRadio}" Content="Week" Tag="Week" Click="Range_Click" />
+                            <RadioButton Style="{DynamicResource SegmentRadio}" Content="Month" Tag="Month" Click="Range_Click" />
+                            <RadioButton Style="{DynamicResource SegmentRadio}" Content="Year" Tag="Year" Click="Range_Click" />
+                        </StackPanel>
+                    </Border>
+                    <Button Content="Refresh" Style="{StaticResource GhostButton}"
+                            Margin="10,0,0,0" Click="Refresh_Click" />
+                </StackPanel>
+            </Grid>
+
+            <!-- KPI cards -->
+            <Grid Grid.Row="1" Margin="0,18,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="REVENUE" Style="{StaticResource KpiLabel}" />
+                        <TextBlock x:Name="RevenueText" Style="{StaticResource KpiValue}" Margin="0,8,0,0" />
+                        <TextBlock x:Name="RevenueDeltaText" FontSize="11"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="ORDERS" Style="{StaticResource KpiLabel}" />
+                        <TextBlock x:Name="OrdersText" Style="{StaticResource KpiValue}" Margin="0,8,0,0" />
+                        <TextBlock x:Name="OrdersDeltaText" FontSize="11"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="4" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="AVG TICKET" Style="{StaticResource KpiLabel}" />
+                        <TextBlock x:Name="AvgTicketText" Style="{StaticResource KpiValue}" Margin="0,8,0,0" />
+                        <TextBlock Text="per order" FontSize="11"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="6" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="MENU ITEMS" Style="{StaticResource KpiLabel}" />
+                        <TextBlock x:Name="MenuItemsText" Style="{StaticResource KpiValue}" Margin="0,8,0,0" />
+                        <TextBlock x:Name="MenuItemsAvailText" FontSize="11"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Revenue trend -->
+            <Grid Grid.Row="2" Margin="0,16,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock x:Name="TrendTitle" Text="Revenue Trend" Style="{StaticResource SectionTitle}" />
+                        <c:LineChart x:Name="TrendChart" Height="240" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Top Items" Style="{StaticResource SectionTitle}" />
+                        <ItemsControl x:Name="TopItemsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{StaticResource BrandBorderBrush}" BorderThickness="0,0,0,1" Padding="0,8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="22" Height="22" CornerRadius="11"
+                                                    Background="{StaticResource BrandPrimaryBrush}" Margin="0,0,10,0">
+                                                <TextBlock Text="{Binding Rank}" Foreground="White" FontSize="11" FontWeight="Bold"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{StaticResource BrandTextBrush}"
+                                                           ToolTip="{Binding Name}" />
+                                                <TextBlock Text="{Binding QtyText}" FontSize="11"
+                                                           Foreground="{StaticResource BrandSubtleTextBrush}" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="{Binding RevenueText}"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource BrandTextBrush}"
+                                                       Margin="8,0,0,0" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock x:Name="EmptyTopItems" Text="No sales in this range yet."
+                                   Foreground="{StaticResource BrandSubtleTextBrush}"
+                                   Margin="0,12,0,0"
+                                   Visibility="Collapsed" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Hourly + Categories -->
+            <Grid Grid.Row="3" Margin="0,16,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Orders by Hour" Style="{StaticResource SectionTitle}" />
+                        <c:BarChart x:Name="HourlyChart" Height="220" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Category Breakdown" Style="{StaticResource SectionTitle}" />
+                        <ItemsControl x:Name="CategoryList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,6,0,6">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid Grid.Row="0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Category}" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource BrandTextBrush}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="1" Text="{Binding RevenueText}" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource BrandTextBrush}" />
+                                        </Grid>
+                                        <Border Grid.Row="1" Height="6" Background="#FFE2E8F0"
+                                                CornerRadius="3" Margin="0,6,0,0">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="{Binding FillRatio}" />
+                                                    <ColumnDefinition Width="{Binding RemainRatio}" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Background="{StaticResource BrandPrimaryBrush}" CornerRadius="3" />
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock x:Name="EmptyCategory" Text="No data."
+                                   Foreground="{StaticResource BrandSubtleTextBrush}" Visibility="Collapsed" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Footer note -->
+            <Border Grid.Row="4" Margin="0,16,0,0" Padding="14,10"
+                    Background="#FFECFEFF" BorderBrush="#FFA5F3FC" BorderThickness="1" CornerRadius="6">
+                <TextBlock x:Name="StoragePathText"
+                           Foreground="#FF155E75" FontSize="11" TextWrapping="Wrap" />
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

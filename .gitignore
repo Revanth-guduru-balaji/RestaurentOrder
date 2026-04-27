@@ -1,0 +1,24 @@
+# Build output
+bin/
+obj/
+*.user
+*.suo
+
+# Visual Studio
+.vs/
+*.userprefs
+
+# Rider / Resharper
+.idea/
+_ReSharper*/
+
+# Local DB
+*.db
+*.db-shm
+*.db-wal
+
+# AI tool configs
+.claude/
+.cursor/
+.copilot/
+CLAUDE.md

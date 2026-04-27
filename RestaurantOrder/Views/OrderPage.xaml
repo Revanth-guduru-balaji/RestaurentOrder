@@ -1,0 +1,151 @@
+<UserControl x:Class="RestaurantOrder.Views.OrderPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="http://schemas.modernwpf.com/2019"
+             mc:Ignorable="d"
+             Background="{StaticResource BrandSurfaceBrush}">
+    <Grid Margin="0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="380" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Menu side -->
+        <Grid Grid.Column="0" Margin="28,24,16,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0">
+                <TextBlock Text="Take Order" Style="{StaticResource PageTitle}" />
+                <TextBlock Text="Tap items to add to the cart" Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
+            </StackPanel>
+
+            <Grid Grid.Row="1" Margin="0,18,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="SearchBox"
+                         ui:ControlHelper.PlaceholderText="Search menu..."
+                         FontSize="14"
+                         Padding="12,8"
+                         TextChanged="SearchBox_TextChanged" />
+            </Grid>
+
+            <ItemsControl Grid.Row="2" x:Name="CategoryTabs" Margin="0,0,0,8">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+
+            <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="MenuList">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Cart side -->
+        <Border Grid.Column="1" Background="White"
+                BorderBrush="{StaticResource BrandBorderBrush}"
+                BorderThickness="1,0,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Padding="22,22,22,16"
+                        Background="{StaticResource BrandHeaderBrush}">
+                    <StackPanel>
+                        <TextBlock Text="Current Order" Foreground="White"
+                                   FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock x:Name="OrderTimeText" Foreground="#FFE0F7FA"
+                                   FontSize="11" Margin="0,2,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="14,8">
+                    <StackPanel x:Name="CartList" />
+                </ScrollViewer>
+
+                <Border Grid.Row="2" Padding="20,16" Background="#FFF9FAFB"
+                        BorderBrush="{StaticResource BrandBorderBrush}"
+                        BorderThickness="0,1,0,0">
+                    <StackPanel>
+                        <Border x:Name="ToastBorder" Visibility="Collapsed"
+                                Background="{StaticResource BrandSuccessBrush}"
+                                CornerRadius="6" Padding="12,8" Margin="0,0,0,12">
+                            <TextBlock x:Name="ToastText" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        </Border>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Items" Foreground="{StaticResource BrandSubtleTextBrush}" />
+                            <TextBlock Grid.Column="1" x:Name="ItemCountText" Text="0"
+                                       Foreground="{StaticResource BrandTextBrush}" FontWeight="SemiBold" />
+                        </Grid>
+                        <Grid Margin="0,4,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Total" FontWeight="SemiBold" FontSize="16"
+                                       Foreground="{StaticResource BrandTextBrush}" />
+                            <TextBlock Grid.Column="1" x:Name="TotalText"
+                                       FontWeight="Bold" FontSize="22"
+                                       Foreground="{StaticResource BrandPrimaryBrush}"
+                                       Text="₹ 0.00" />
+                        </Grid>
+
+                        <TextBox x:Name="CustomerNameBox"
+                                 ui:ControlHelper.PlaceholderText="Customer name (optional)"
+                                 Margin="0,0,0,8" />
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <RadioButton x:Name="PayCash" GroupName="Pay" Grid.Column="0" Content="Cash" IsChecked="True"
+                                         Foreground="{StaticResource BrandTextBrush}" />
+                            <RadioButton x:Name="PayUpi"  GroupName="Pay" Grid.Column="1" Content="UPI"
+                                         Foreground="{StaticResource BrandTextBrush}" />
+                            <RadioButton x:Name="PayCard" GroupName="Pay" Grid.Column="2" Content="Card"
+                                         Foreground="{StaticResource BrandTextBrush}" />
+                        </Grid>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="Clear"
+                                    Style="{StaticResource GhostButton}"
+                                    Click="Clear_Click" />
+                            <Button Grid.Column="2" Content="Place &amp; Print"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Click="PlaceAndPrint_Click" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
