@@ -44,17 +44,14 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Grid Grid.Row="0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel>
+            <WrapPanel Grid.Row="0" Orientation="Horizontal">
+                <StackPanel MinWidth="220" Margin="0,0,24,8" VerticalAlignment="Center">
                     <TextBlock Text="Dashboard" Style="{StaticResource PageTitle}" />
                     <TextBlock x:Name="WelcomeText" Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
                     <Border Background="White" BorderBrush="{StaticResource BrandBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="2"
+                            Margin="0,0,10,0"
                             ClipToBounds="True">
                         <Border.Resources>
                             <Style TargetType="StackPanel">
@@ -69,22 +66,19 @@
                         </StackPanel>
                     </Border>
                     <Button Content="Refresh" Style="{StaticResource GhostButton}"
-                            Margin="10,0,0,0" Click="Refresh_Click" />
-                </StackPanel>
-            </Grid>
+                            Click="Refresh_Click" />
+                </WrapPanel>
+            </WrapPanel>
 
             <!-- KPI cards -->
-            <Grid Grid.Row="1" Margin="0,18,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Border Grid.Column="0" Style="{StaticResource Card}">
+            <WrapPanel Grid.Row="1" Margin="0,18,0,0" Orientation="Horizontal">
+                <WrapPanel.Resources>
+                    <Style x:Key="KpiCard" TargetType="Border" BasedOn="{StaticResource Card}">
+                        <Setter Property="Width" Value="220" />
+                        <Setter Property="Margin" Value="0,0,12,12" />
+                    </Style>
+                </WrapPanel.Resources>
+                <Border Style="{StaticResource KpiCard}">
                     <StackPanel>
                         <TextBlock Text="REVENUE" Style="{StaticResource KpiLabel}" />
                         <TextBlock x:Name="RevenueText" Style="{StaticResource KpiValue}" Margin="0,8,0,0" />
@@ -92,7 +86,7 @@
                                    Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,4,0,0" />
                     </StackPanel>
                 </Border>
-                <Border Grid.Column="2" Style="{StaticResource Card}">
+                <Border Style="{StaticResource KpiCard}">
                     <StackPanel>
                         <TextBlock Text="ORDERS" Style="{StaticResource KpiLabel}" />
                         <TextBlock x:Name="OrdersText" Style="{StaticResource KpiValue}" Margin="0,8,0,0" />
@@ -100,7 +94,7 @@
                                    Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,4,0,0" />
                     </StackPanel>
                 </Border>
-                <Border Grid.Column="4" Style="{StaticResource Card}">
+                <Border Style="{StaticResource KpiCard}">
                     <StackPanel>
                         <TextBlock Text="AVG TICKET" Style="{StaticResource KpiLabel}" />
                         <TextBlock x:Name="AvgTicketText" Style="{StaticResource KpiValue}" Margin="0,8,0,0" />
@@ -108,7 +102,7 @@
                                    Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,4,0,0" />
                     </StackPanel>
                 </Border>
-                <Border Grid.Column="6" Style="{StaticResource Card}">
+                <Border Style="{StaticResource KpiCard}">
                     <StackPanel>
                         <TextBlock Text="MENU ITEMS" Style="{StaticResource KpiLabel}" />
                         <TextBlock x:Name="MenuItemsText" Style="{StaticResource KpiValue}" Margin="0,8,0,0" />
@@ -116,7 +110,7 @@
                                    Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,4,0,0" />
                     </StackPanel>
                 </Border>
-            </Grid>
+            </WrapPanel>
 
             <!-- Revenue trend -->
             <Grid Grid.Row="2" Margin="0,16,0,0">

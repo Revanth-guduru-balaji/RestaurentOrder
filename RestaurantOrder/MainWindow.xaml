@@ -9,8 +9,9 @@
         ui:WindowHelper.UseModernWindowStyle="True"
         Title="Araya Vysya SSV — Restaurant Manager"
         Height="800" Width="1280"
-        MinHeight="600" MinWidth="1000"
+        MinHeight="480" MinWidth="720"
         WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
         Background="{StaticResource BrandSurfaceBrush}">
     <Grid>
         <Grid.ColumnDefinitions>

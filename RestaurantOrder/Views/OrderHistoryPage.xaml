@@ -13,24 +13,20 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel>
+        <WrapPanel Grid.Row="0" Orientation="Horizontal">
+            <StackPanel MinWidth="200" Margin="0,0,24,8" VerticalAlignment="Center">
                 <TextBlock Text="Order History" Style="{StaticResource PageTitle}" />
                 <TextBlock Text="Searchable list of past orders" Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
             </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <DatePicker x:Name="FromDate" Margin="0,0,8,0" SelectedDateChanged="DateRange_Changed" />
-                <TextBlock Text="–" VerticalAlignment="Center" Margin="0,0,8,0" />
-                <DatePicker x:Name="ToDate" Margin="0,0,8,0" SelectedDateChanged="DateRange_Changed" />
-                <Button Content="Today" Style="{StaticResource GhostButton}" Margin="0,0,8,0" Click="Today_Click" />
-                <Button Content="This week" Style="{StaticResource GhostButton}" Margin="0,0,8,0" Click="Week_Click" />
-                <Button Content="This month" Style="{StaticResource GhostButton}" Click="Month_Click" />
-            </StackPanel>
-        </Grid>
+            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                <DatePicker x:Name="FromDate" Margin="0,0,8,8" SelectedDateChanged="DateRange_Changed" />
+                <TextBlock Text="–" VerticalAlignment="Center" Margin="0,0,8,8" />
+                <DatePicker x:Name="ToDate" Margin="0,0,8,8" SelectedDateChanged="DateRange_Changed" />
+                <Button Content="Today" Style="{StaticResource GhostButton}" Margin="0,0,8,8" Click="Today_Click" />
+                <Button Content="This week" Style="{StaticResource GhostButton}" Margin="0,0,8,8" Click="Week_Click" />
+                <Button Content="This month" Style="{StaticResource GhostButton}" Margin="0,0,0,8" Click="Month_Click" />
+            </WrapPanel>
+        </WrapPanel>
 
         <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,18,0,12">
             <Grid>
