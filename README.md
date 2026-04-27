@@ -32,13 +32,15 @@ A sample menu (idly, dosa, vada, coffee, tea, meals…) is seeded on first run s
 
 ## Build a self-contained `.exe` for distribution
 
-```powershell
-dotnet publish .\RestaurantOrder\RestaurantOrder.csproj `
-    -c Release -r win-x64 --self-contained true `
-    /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true
+The simplest path is the bundled batch script:
+
+```cmd
+build.bat
 ```
 
-The output will be a single `RestaurantOrder.exe` under `bin\Release\net8.0-windows\win-x64\publish\`. Copy it to any Windows 10/11 machine and double-click — no .NET install required.
+It produces `dist\RestaurantOrder.exe` — a single self-contained file (~170 MB) that runs on any Windows 10/11 machine without a .NET install. Pass `win-arm64` as the first argument to target ARM64 instead of x64.
+
+For end-to-end install / configure / backup / troubleshooting steps, see [`SETUP.md`](SETUP.md).
 
 ## Features
 
