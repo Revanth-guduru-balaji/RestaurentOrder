@@ -18,16 +18,28 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0">
                 <TextBlock Text="Take Order" Style="{StaticResource PageTitle}" />
-                <TextBlock Text="Tap items to add to the cart" Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
+                <TextBlock Text="Tap items to add to the cart · hold one order while you start another"
+                           Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
             </StackPanel>
 
+            <!-- Draft tab strip: one tab per held order, plus a + New button -->
+            <Border Grid.Row="1" Margin="0,16,0,0"
+                    Background="{StaticResource BrandSoftSurfaceAltBrush}"
+                    BorderBrush="{StaticResource BrandBorderBrush}"
+                    BorderThickness="1" CornerRadius="10" Padding="8">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="DraftTabsPanel" Orientation="Horizontal" />
+                </ScrollViewer>
+            </Border>
+
             <!-- Search with inline magnifier glyph -->
-            <Border Grid.Row="1" Margin="0,18,0,12"
+            <Border Grid.Row="2" Margin="0,12,0,12"
                     Background="White"
                     BorderBrush="{StaticResource BrandBorderBrush}"
                     BorderThickness="1"
@@ -50,7 +62,7 @@
                 </Grid>
             </Border>
 
-            <ItemsControl Grid.Row="2" x:Name="CategoryTabs" Margin="0,0,0,8">
+            <ItemsControl Grid.Row="3" x:Name="CategoryTabs" Margin="0,0,0,8">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <WrapPanel Orientation="Horizontal" />
@@ -58,7 +70,7 @@
                 </ItemsControl.ItemsPanel>
             </ItemsControl>
 
-            <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto"
+            <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
                           HorizontalContentAlignment="Left"
                           VerticalContentAlignment="Top">
@@ -178,12 +190,14 @@
 
                         <TextBox x:Name="CustomerNameBox"
                                  ui:ControlHelper.PlaceholderText="Customer name (optional)"
-                                 Margin="0,0,0,8" />
+                                 Margin="0,0,0,8"
+                                 TextChanged="CustomerName_Changed" />
 
                         <Border Background="#FFFFF7ED"
                                 BorderBrush="#FFFCD34D" BorderThickness="1"
                                 CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
-                            <CheckBox x:Name="ParcelBox" Cursor="Hand">
+                            <CheckBox x:Name="ParcelBox" Cursor="Hand"
+                                      Checked="Parcel_Changed" Unchecked="Parcel_Changed">
                                 <StackPanel>
                                     <TextBlock Text="Parcel order" FontWeight="SemiBold" FontSize="14"
                                                Foreground="{StaticResource BrandTextBrush}" />
@@ -201,11 +215,14 @@
                                 <ColumnDefinition />
                             </Grid.ColumnDefinitions>
                             <RadioButton x:Name="PayCash" Style="{StaticResource PaymentPill}"
-                                         GroupName="Pay" Grid.Column="0" Content="Cash" IsChecked="True" />
+                                         GroupName="Pay" Grid.Column="0" Content="Cash" IsChecked="True"
+                                         Checked="Payment_Changed" />
                             <RadioButton x:Name="PayUpi"  Style="{StaticResource PaymentPill}"
-                                         GroupName="Pay" Grid.Column="1" Content="UPI" />
+                                         GroupName="Pay" Grid.Column="1" Content="UPI"
+                                         Checked="Payment_Changed" />
                             <RadioButton x:Name="PayCard" Style="{StaticResource PaymentPill}"
-                                         GroupName="Pay" Grid.Column="2" Content="Card" Margin="0" />
+                                         GroupName="Pay" Grid.Column="2" Content="Card" Margin="0"
+                                         Checked="Payment_Changed" />
                         </Grid>
 
                         <Grid>

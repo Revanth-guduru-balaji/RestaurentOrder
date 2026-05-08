@@ -21,6 +21,18 @@ public partial class OrderPage : UserControl
     private readonly Dictionary<int, CartLine> _cart = new();
     private readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromSeconds(15) };
 
+    // ----- Multi-draft state ---------------------------------------------
+    // Drafts are persisted: a held cart survives tab switches, app restart,
+    // even an unclean shutdown. _drafts is the in-memory mirror of the
+    // Drafts table (loaded once on first Loaded). The active draft's items
+    // live in _cart for fast UI rendering; we sync _cart -> active Draft on
+    // every mutation, then debounce-save to disk.
+    private readonly List<Draft> _drafts = new();
+    private Draft? _activeDraft;
+    private bool _draftsInitialized;
+    private bool _suppressDraftSave;
+    private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
+
     private class CartLine
     {
         public MenuItem Item { get; init; } = new();
@@ -31,8 +43,9 @@ public partial class OrderPage : UserControl
     {
         InitializeComponent();
         Loaded += OrderPage_Loaded;
-        Unloaded += (_, _) => _clock.Stop();
+        Unloaded += OrderPage_Unloaded;
         _clock.Tick += (_, _) => UpdateClock();
+        _saveTimer.Tick += (_, _) => { _saveTimer.Stop(); FlushActiveDraft(); };
         // F9 = Place & Print, F4 = focus search
         PreviewKeyDown += (_, e) =>
         {
@@ -55,9 +68,321 @@ public partial class OrderPage : UserControl
         ApplyPlaceButtonLabel();
         UpdateClock();
         _clock.Start();
+
+        // Load drafts the first time the page is shown. On subsequent shows
+        // (cashier flips back from Inventory etc) we keep the in-memory state
+        // so they land on the same draft.
+        if (!_draftsInitialized)
+        {
+            LoadDraftsFromDisk();
+            _draftsInitialized = true;
+        }
+        RebuildDraftTabs();
+        RenderActiveDraft();
+    }
+
+    private void OrderPage_Unloaded(object sender, RoutedEventArgs e)
+    {
+        _clock.Stop();
+        if (_saveTimer.IsEnabled) { _saveTimer.Stop(); FlushActiveDraft(); }
+    }
+
+    // --------------------------------------------------------------------
+    // Draft load / switch / new / close
+    // --------------------------------------------------------------------
+    private void LoadDraftsFromDisk()
+    {
+        _drafts.Clear();
+        try { _drafts.AddRange(DraftRepository.GetAll()); }
+        catch { /* DB unavailable: start with no drafts */ }
+
+        if (_drafts.Count == 0)
+        {
+            // Always have at least one draft visible.
+            _drafts.Add(new Draft());
+        }
+        _activeDraft = _drafts[0];
+    }
+
+    private void SwitchToDraft(Draft draft)
+    {
+        if (ReferenceEquals(_activeDraft, draft)) return;
+        // Flush current cart to active draft, then to disk.
+        SyncCartToActiveDraft();
+        if (_saveTimer.IsEnabled) _saveTimer.Stop();
+        FlushActiveDraft();
+
+        _activeDraft = draft;
+        RebuildDraftTabs();
+        RenderActiveDraft();
+    }
+
+    private void NewDraft_Click(object? sender, RoutedEventArgs e)
+    {
+        SyncCartToActiveDraft();
+        if (_saveTimer.IsEnabled) _saveTimer.Stop();
+        FlushActiveDraft();
+
+        var draft = new Draft();
+        _drafts.Add(draft);
+        _activeDraft = draft;
+        RebuildDraftTabs();
+        RenderActiveDraft();
+    }
+
+    private void CloseDraft_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not Draft draft) return;
+
+        bool hasItems = draft.Items.Count > 0
+            || (ReferenceEquals(draft, _activeDraft) && _cart.Count > 0);
+        if (hasItems)
+        {
+            var ok = MessageBox.Show("Close this draft order? Items in it will be lost.",
+                "Close draft", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (ok != MessageBoxResult.Yes) return;
+        }
+
+        DeleteDraft(draft);
+    }
+
+    private void DeleteDraft(Draft draft)
+    {
+        if (draft.Id > 0)
+        {
+            try { DraftRepository.Delete(draft.Id); } catch { }
+        }
+        bool wasActive = ReferenceEquals(draft, _activeDraft);
+        _drafts.Remove(draft);
+
+        if (_drafts.Count == 0)
+        {
+            _drafts.Add(new Draft());
+            _activeDraft = _drafts[0];
+        }
+        else if (wasActive)
+        {
+            _activeDraft = _drafts[0];
+        }
+
+        RebuildDraftTabs();
+        if (wasActive) RenderActiveDraft();
+    }
+
+    /// Pulls _cart + form state INTO the active Draft object.
+    /// Called before switching drafts and before persisting.
+    private void SyncCartToActiveDraft()
+    {
+        if (_activeDraft == null) return;
+        _activeDraft.Items.Clear();
+        foreach (var line in _cart.Values)
+        {
+            _activeDraft.Items.Add(new DraftItem
+            {
+                MenuItemId = line.Item.Id,
+                MenuItemName = line.Item.Name,
+                UnitPrice = line.Item.Price,
+                Quantity = line.Qty
+            });
+        }
+        _activeDraft.CustomerName = string.IsNullOrWhiteSpace(CustomerNameBox.Text) ? null : CustomerNameBox.Text.Trim();
+        _activeDraft.PaymentMethod = PayCash.IsChecked == true ? "Cash" : (PayUpi.IsChecked == true ? "UPI" : "Card");
+        _activeDraft.IsParcel = ParcelBox.IsChecked == true;
+        _activeDraft.DiscountAmount = GetDiscount();
+        _activeDraft.UpdatedAt = DateTime.Now;
+    }
+
+    /// Mirrors the active Draft INTO _cart + form fields, then re-renders.
+    private void RenderActiveDraft()
+    {
+        _suppressDraftSave = true;
+        try
+        {
+            _cart.Clear();
+            if (_activeDraft != null)
+            {
+                foreach (var it in _activeDraft.Items)
+                {
+                    var live = _allItems.FirstOrDefault(x => x.Id == it.MenuItemId);
+                    // If the item was deleted from the menu since the draft was
+                    // saved, fall back to a synthetic MenuItem so the line still
+                    // shows in the cart with its captured price.
+                    var menuItem = live ?? new MenuItem
+                    {
+                        Id = it.MenuItemId,
+                        Name = it.MenuItemName,
+                        Price = it.UnitPrice
+                    };
+                    _cart[it.MenuItemId] = new CartLine { Item = menuItem, Qty = it.Quantity };
+                }
+                CustomerNameBox.Text = _activeDraft.CustomerName ?? "";
+                ParcelBox.IsChecked = _activeDraft.IsParcel;
+                DiscountBox.Text = _activeDraft.DiscountAmount.ToString("0.##", CultureInfo.InvariantCulture);
+                if (string.Equals(_activeDraft.PaymentMethod, "UPI", StringComparison.OrdinalIgnoreCase))
+                    PayUpi.IsChecked = true;
+                else if (string.Equals(_activeDraft.PaymentMethod, "Card", StringComparison.OrdinalIgnoreCase))
+                    PayCard.IsChecked = true;
+                else
+                    PayCash.IsChecked = true;
+            }
+            else
+            {
+                CustomerNameBox.Text = "";
+                ParcelBox.IsChecked = false;
+                DiscountBox.Text = "0";
+                PayCash.IsChecked = true;
+            }
+        }
+        finally { _suppressDraftSave = false; }
+        RenderMenu();
         RenderCart();
     }
 
+    /// Schedule a debounced persist of the active draft. Called on every
+    /// cart mutation (add / remove / qty / customer / parcel / discount).
+    private void MarkDraftDirty()
+    {
+        if (_suppressDraftSave) return;
+        _saveTimer.Stop();
+        _saveTimer.Start();
+    }
+
+    private void FlushActiveDraft()
+    {
+        if (_activeDraft == null) return;
+        SyncCartToActiveDraft();
+        // Don't persist a brand-new untouched draft (no items, no name, no flags).
+        if (_activeDraft.Id == 0
+            && _activeDraft.Items.Count == 0
+            && string.IsNullOrWhiteSpace(_activeDraft.CustomerName)
+            && !_activeDraft.IsParcel
+            && _activeDraft.DiscountAmount == 0m)
+        {
+            return;
+        }
+        try
+        {
+            if (_activeDraft.Id == 0) DraftRepository.Insert(_activeDraft);
+            else DraftRepository.Update(_activeDraft);
+            RebuildDraftTabs(); // refresh the tab label (Draft # depends on order)
+        }
+        catch { /* swallow — will retry on next mutation */ }
+    }
+
+    private void RebuildDraftTabs()
+    {
+        DraftTabsPanel.Children.Clear();
+        for (int i = 0; i < _drafts.Count; i++)
+        {
+            var d = _drafts[i];
+            DraftTabsPanel.Children.Add(BuildDraftTab(d, i + 1));
+        }
+
+        // + New button at the end
+        var newBtn = new Button
+        {
+            Style = (Style)Application.Current.Resources["GhostButton"],
+            Content = "+ New",
+            Padding = new Thickness(14, 6, 14, 6),
+            Margin = new Thickness(4, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        newBtn.Click += NewDraft_Click;
+        DraftTabsPanel.Children.Add(newBtn);
+    }
+
+    private Border BuildDraftTab(Draft draft, int displayNumber)
+    {
+        bool isActive = ReferenceEquals(draft, _activeDraft);
+        int itemCount = ReferenceEquals(draft, _activeDraft)
+            ? _cart.Values.Sum(l => l.Qty)
+            : draft.Items.Sum(i => i.Quantity);
+
+        var tab = new Border
+        {
+            Background = isActive
+                ? (Brush)Application.Current.Resources["BrandPrimaryBrush"]
+                : Brushes.White,
+            BorderBrush = (Brush)Application.Current.Resources["BrandBorderBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(18),
+            MinHeight = 36,
+            Margin = new Thickness(0, 0, 6, 0),
+            Padding = new Thickness(14, 0, 8, 0),
+            Cursor = Cursors.Hand,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        tab.MouseLeftButtonUp += (_, _) => SwitchToDraft(draft);
+
+        var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+
+        var title = string.IsNullOrWhiteSpace(draft.CustomerName)
+            ? $"Draft {displayNumber}"
+            : $"Draft {displayNumber} · {draft.CustomerName}";
+        if (draft.IsParcel) title += " · 📦";
+
+        row.Children.Add(new TextBlock
+        {
+            Text = title,
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = isActive ? Brushes.White : (Brush)Application.Current.Resources["BrandTextBrush"],
+            Margin = new Thickness(0, 0, 8, 0)
+        });
+
+        // Item count chip (skip when zero so empty drafts look quiet)
+        if (itemCount > 0)
+        {
+            var countBadge = new Border
+            {
+                Background = isActive
+                    ? new SolidColorBrush(Color.FromArgb(0x55, 0xFF, 0xFF, 0xFF))
+                    : (Brush)Application.Current.Resources["BrandSoftSurfaceBrush"],
+                CornerRadius = new CornerRadius(10),
+                MinHeight = 20,
+                Padding = new Thickness(8, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 6, 0)
+            };
+            countBadge.Child = new TextBlock
+            {
+                Text = itemCount.ToString(),
+                FontSize = 11,
+                FontWeight = FontWeights.Bold,
+                Foreground = isActive ? Brushes.White : (Brush)Application.Current.Resources["BrandSubtleTextDarkBrush"],
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            row.Children.Add(countBadge);
+        }
+
+        var closeBtn = new Button
+        {
+            Content = "✕",
+            FontSize = 11,
+            FontWeight = FontWeights.Bold,
+            Width = 22,
+            Height = 22,
+            Padding = new Thickness(0),
+            BorderThickness = new Thickness(0),
+            Background = Brushes.Transparent,
+            Foreground = isActive ? Brushes.White : (Brush)Application.Current.Resources["BrandSubtleTextBrush"],
+            Cursor = Cursors.Hand,
+            VerticalAlignment = VerticalAlignment.Center,
+            Tag = draft,
+            ToolTip = "Close this draft"
+        };
+        closeBtn.Click += CloseDraft_Click;
+        row.Children.Add(closeBtn);
+
+        tab.Child = row;
+        return tab;
+    }
+
+    // --------------------------------------------------------------------
+    // Menu rendering (unchanged)
+    // --------------------------------------------------------------------
     private void ReloadMenu()
     {
         _allItems.Clear();
@@ -274,6 +599,9 @@ public partial class OrderPage : UserControl
             _cart[item.Id] = new CartLine { Item = item, Qty = 1 };
         }
         RenderCart();
+        RenderMenu();
+        MarkDraftDirty();
+        RebuildDraftTabs();
     }
 
     private void RenderCart()
@@ -290,7 +618,7 @@ public partial class OrderPage : UserControl
             };
             empty.Children.Add(new TextBlock
             {
-                Text = "",
+                Text = "",
                 FontFamily = (FontFamily)Application.Current.Resources["BrandIconFontFamily"],
                 FontSize = 42,
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -368,15 +696,39 @@ public partial class OrderPage : UserControl
         // elements are wired up — guard until the page is fully loaded.
         if (!IsLoaded) return;
         RenderCart();
+        MarkDraftDirty();
+    }
+
+    private void CustomerName_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        MarkDraftDirty();
+        RebuildDraftTabs(); // tab label includes customer name
+    }
+
+    private void Parcel_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        MarkDraftDirty();
+        RebuildDraftTabs();
+    }
+
+    private void Payment_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        MarkDraftDirty();
     }
 
     private Border BuildCartRow(CartLine line)
     {
+        // Compact 2-column row: name+price on left, qty stepper + line total
+        // on right, all on one visual line. Bulk orders (20-50 items) need
+        // density so the cashier can scan the cart without endless scrolling.
         var b = new Border
         {
             BorderBrush = new SolidColorBrush(Color.FromRgb(0xF1, 0xF5, 0xF9)),
             BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(2, 10, 2, 12)
+            Padding = new Thickness(2, 6, 2, 6)
         };
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -388,7 +740,7 @@ public partial class OrderPage : UserControl
         {
             Text = line.Item.Name,
             FontWeight = FontWeights.SemiBold,
-            FontSize = 14,
+            FontSize = 13,
             TextTrimming = TextTrimming.CharacterEllipsis,
             ToolTip = line.Item.Name,
             Foreground = (Brush)Application.Current.Resources["BrandTextBrush"]
@@ -398,7 +750,7 @@ public partial class OrderPage : UserControl
             Text = $"{Money.Format(line.Item.Price)} each",
             Foreground = (Brush)Application.Current.Resources["BrandSubtleTextBrush"],
             FontSize = 11,
-            Margin = new Thickness(0, 2, 0, 6)
+            Margin = new Thickness(0, 1, 0, 4)
         });
 
         var qtyPanel = new StackPanel { Orientation = Orientation.Horizontal };
@@ -431,6 +783,8 @@ public partial class OrderPage : UserControl
             if (line.Qty <= 0) _cart.Remove(line.Item.Id);
             RenderCart();
             RenderMenu();
+            MarkDraftDirty();
+            RebuildDraftTabs();
         };
         plus.Click += (_, _) =>
         {
@@ -442,6 +796,8 @@ public partial class OrderPage : UserControl
             line.Qty++;
             RenderCart();
             RenderMenu();
+            MarkDraftDirty();
+            RebuildDraftTabs();
         };
         qtyPanel.Children.Add(minus);
         qtyPanel.Children.Add(qtyBox);
@@ -476,7 +832,7 @@ public partial class OrderPage : UserControl
             ToolTip = "Remove from order",
             Content = new TextBlock
             {
-                Text = "",
+                Text = "",
                 FontFamily = (FontFamily)Application.Current.Resources["BrandIconFontFamily"],
                 FontSize = 12
             }
@@ -486,6 +842,8 @@ public partial class OrderPage : UserControl
             _cart.Remove(line.Item.Id);
             RenderCart();
             RenderMenu();
+            MarkDraftDirty();
+            RebuildDraftTabs();
         };
         rightStack.Children.Add(del);
         Grid.SetColumn(rightStack, 1);
@@ -506,6 +864,8 @@ public partial class OrderPage : UserControl
         {
             _cart.Remove(line.Item.Id);
             RenderCart();
+            MarkDraftDirty();
+            RebuildDraftTabs();
             return;
         }
         if (line.Item.TracksStock && n > line.Item.AvailableQty)
@@ -515,6 +875,8 @@ public partial class OrderPage : UserControl
         }
         line.Qty = n;
         RenderCart();
+        MarkDraftDirty();
+        RebuildDraftTabs();
     }
 
     private static Button MakeQtyButton(string text)
@@ -534,6 +896,8 @@ public partial class OrderPage : UserControl
         DiscountBox.Text = "0";
         ParcelBox.IsChecked = false;
         RenderCart();
+        MarkDraftDirty();
+        RebuildDraftTabs();
     }
 
     private void PlaceAndPrint_Click(object sender, RoutedEventArgs e)
@@ -611,12 +975,15 @@ public partial class OrderPage : UserControl
             }
         }
 
-        _cart.Clear();
-        CustomerNameBox.Text = "";
-        DiscountBox.Text = "0";
-        ParcelBox.IsChecked = false; // reset for next order
+        // Order is committed — drop the held draft so it doesn't reappear on
+        // the next launch as an in-progress cart.
+        if (_activeDraft != null)
+        {
+            var placed = _activeDraft;
+            DeleteDraft(placed); // also creates an empty fallback draft
+        }
         ReloadMenu();
-        RenderCart();
+        RenderActiveDraft();
 
         if (printError != null)
             ShowToast($"Order #{order.Id:D5} saved · print failed: {printError}", isError: true);

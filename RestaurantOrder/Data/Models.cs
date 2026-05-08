@@ -93,3 +93,30 @@ public class OrderItem
     public int Quantity { get; set; }
     public decimal LineTotal => UnitPrice * Quantity;
 }
+
+/// In-progress order. Survives app restart so a held cart isn't lost to a
+/// power blip or accidental close. Deleted when the draft is placed or the
+/// cashier closes the tab manually.
+public class Draft
+{
+    public int Id { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+    public string? CustomerName { get; set; }
+    public string PaymentMethod { get; set; } = "Cash";
+    public decimal DiscountAmount { get; set; }
+    public bool IsParcel { get; set; }
+    public string? Notes { get; set; }
+    public List<DraftItem> Items { get; set; } = new();
+}
+
+public class DraftItem
+{
+    public int Id { get; set; }
+    public int DraftId { get; set; }
+    public int MenuItemId { get; set; }
+    public string MenuItemName { get; set; } = string.Empty;
+    public decimal UnitPrice { get; set; }
+    public int Quantity { get; set; }
+    public decimal LineTotal => UnitPrice * Quantity;
+}

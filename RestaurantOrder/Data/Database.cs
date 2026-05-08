@@ -77,6 +77,27 @@ public static class Database
             );
             CREATE INDEX IF NOT EXISTS IX_ReprintLog_OrderId ON ReprintLog(OrderId);
             CREATE INDEX IF NOT EXISTS IX_ReprintLog_CreatedAt ON ReprintLog(CreatedAt);
+
+            CREATE TABLE IF NOT EXISTS Drafts (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                CreatedAt TEXT NOT NULL,
+                UpdatedAt TEXT NOT NULL,
+                CustomerName TEXT,
+                PaymentMethod TEXT NOT NULL DEFAULT 'Cash',
+                DiscountAmount REAL NOT NULL DEFAULT 0,
+                IsParcel INTEGER NOT NULL DEFAULT 0,
+                Notes TEXT
+            );
+            CREATE TABLE IF NOT EXISTS DraftItems (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                DraftId INTEGER NOT NULL,
+                MenuItemId INTEGER NOT NULL,
+                MenuItemName TEXT NOT NULL,
+                UnitPrice REAL NOT NULL,
+                Quantity INTEGER NOT NULL,
+                FOREIGN KEY(DraftId) REFERENCES Drafts(Id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS IX_DraftItems_DraftId ON DraftItems(DraftId);
         ";
         cmd2.ExecuteNonQuery();
 
