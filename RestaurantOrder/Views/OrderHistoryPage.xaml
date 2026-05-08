@@ -318,7 +318,7 @@
                                            Foreground="{StaticResource BrandTextBrush}"
                                            VerticalAlignment="Center" />
                                 <Border x:Name="StatusBadgeClosed" Background="{StaticResource SuccessBgBrush}"
-                                        CornerRadius="9999" Padding="8,3" Margin="10,0,0,0"
+                                        CornerRadius="12" MinHeight="24" Padding="10,0" Margin="10,0,0,0"
                                         VerticalAlignment="Center">
                                     <StackPanel Orientation="Horizontal">
                                         <Ellipse Width="6" Height="6" Fill="{StaticResource SuccessFgBrush}"
@@ -329,7 +329,7 @@
                                     </StackPanel>
                                 </Border>
                                 <Border x:Name="StatusBadgeVoided" Background="{StaticResource DangerBgBrush}"
-                                        CornerRadius="9999" Padding="8,3" Margin="10,0,0,0"
+                                        CornerRadius="12" MinHeight="24" Padding="10,0" Margin="10,0,0,0"
                                         VerticalAlignment="Center"
                                         Visibility="Collapsed">
                                     <StackPanel Orientation="Horizontal">

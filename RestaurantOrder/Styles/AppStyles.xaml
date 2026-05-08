@@ -333,15 +333,19 @@
         </Setter>
     </Style>
 
-    <!-- Filter chip used in the rail (gray off, dark-cyan on) -->
+    <!-- Filter chip used in the rail (gray off, dark-cyan on)
+         MUI Chip spec: 32px tall, radius = 16 (= height/2), 12px h-padding.
+         Vertical padding is 0 — MinHeight gives the chip its height so the
+         corner radius produces clean semicircular ends, not an oval. -->
     <Style x:Key="FilterChip" TargetType="ToggleButton">
         <Setter Property="Background" Value="{StaticResource BrandSoftSurfaceBrush}" />
         <Setter Property="Foreground" Value="{StaticResource BrandSubtleTextDarkBrush}" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="13" />
         <Setter Property="FontWeight" Value="Medium" />
-        <Setter Property="Padding" Value="14,7" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="MinHeight" Value="32" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Margin" Value="0,0,6,0" />
         <Setter Property="Template">
@@ -351,7 +355,8 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="9999"
+                            CornerRadius="16"
+                            MinHeight="{TemplateBinding MinHeight}"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
                                           TextElement.Foreground="{TemplateBinding Foreground}"
@@ -372,11 +377,12 @@
         </Setter>
     </Style>
 
-    <!-- Category tag (small inline pill in table cells) -->
+    <!-- Category tag (small pill in inventory table cells) -->
     <Style x:Key="CategoryTagPill" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource BrandSoftSurfaceBrush}" />
-        <Setter Property="CornerRadius" Value="9999" />
-        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="MinHeight" Value="24" />
         <Setter Property="HorizontalAlignment" Value="Left" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
@@ -397,10 +403,11 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
-    <!-- Status badge inline in cells (LOW / OUT) -->
+    <!-- Status badge inline in cells (LOW / OUT) — small pill -->
     <Style x:Key="InlineStatusBadge" TargetType="Border">
-        <Setter Property="CornerRadius" Value="9999" />
-        <Setter Property="Padding" Value="8,2" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="MinHeight" Value="20" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Margin" Value="8,0,0,0" />
     </Style>
@@ -505,10 +512,11 @@
         <Setter Property="HorizontalContentAlignment" Value="Right" />
     </Style>
 
-    <!-- ======== Payment method chip (Cash/UPI/Card) ======== -->
+    <!-- ======== Small payment / status pill ======== -->
     <Style x:Key="PaymentChip" TargetType="Border">
-        <Setter Property="CornerRadius" Value="9999" />
-        <Setter Property="Padding" Value="10,3" />
+        <Setter Property="CornerRadius" Value="11" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="MinHeight" Value="22" />
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="BorderThickness" Value="1" />
@@ -675,7 +683,7 @@
         </Setter>
     </Style>
 
-    <!-- Category filter chip on Take Order page (MUI pill) -->
+    <!-- Category filter chip on Take Order page (MUI pill, 32px tall) -->
     <Style x:Key="CategoryChip" TargetType="Button">
         <Setter Property="Background" Value="White" />
         <Setter Property="Foreground" Value="{StaticResource BrandTextBrush}" />
@@ -683,7 +691,8 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="FontWeight" Value="Medium" />
-        <Setter Property="Padding" Value="14,7" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="MinHeight" Value="32" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
             <Setter.Value>
@@ -692,7 +701,8 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="9999"
+                            CornerRadius="16"
+                            MinHeight="{TemplateBinding MinHeight}"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
                                           TextElement.Foreground="{TemplateBinding Foreground}"
@@ -704,7 +714,7 @@
         </Setter>
     </Style>
 
-    <!-- Pill-style payment radio (Cash / UPI / Card) -->
+    <!-- Pill-style payment radio (Cash / UPI / Card) — true pill, 36px tall -->
     <Style x:Key="PaymentPill" TargetType="RadioButton">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FontSize" Value="13" />
@@ -712,7 +722,8 @@
         <Setter Property="Foreground" Value="{StaticResource BrandTextBrush}" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="Padding" Value="6,8" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="MinHeight" Value="36" />
         <Setter Property="Margin" Value="0,0,6,0" />
         <Setter Property="Template">
             <Setter.Value>
@@ -721,7 +732,8 @@
                             Background="White"
                             BorderBrush="{StaticResource BrandBorderBrush}"
                             BorderThickness="1"
-                            CornerRadius="6"
+                            CornerRadius="18"
+                            MinHeight="{TemplateBinding MinHeight}"
                             Padding="{TemplateBinding Padding}">
                         <Grid>
                             <Grid.ColumnDefinitions>

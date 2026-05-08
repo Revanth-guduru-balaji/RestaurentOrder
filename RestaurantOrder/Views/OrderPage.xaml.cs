@@ -191,13 +191,14 @@ public partial class OrderPage : UserControl
         });
         root.Children.Add(stack);
 
-        // Selected count badge (top-left) — visible when item is already in cart
+        // Selected count badge (top-left) — visible when item is already in cart.
+        // Round badge: width = height so the radius produces a perfect circle.
         if (inCart)
         {
             var bdg = new Border
             {
                 Background = (Brush)Application.Current.Resources["BrandPrimaryBrush"],
-                CornerRadius = new CornerRadius(4),
+                CornerRadius = new CornerRadius(11),
                 Width = 22,
                 Height = 22,
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -218,13 +219,15 @@ public partial class OrderPage : UserControl
 
         if (showBadge)
         {
+            // Stock badge: pill shape (radius = height/2 = 11 for 22px height).
             var badge = new Border
             {
                 Background = soldOut
                     ? (Brush)Application.Current.Resources["BrandDangerBrush"]
                     : new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B)),
-                CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(8, 2, 8, 2),
+                CornerRadius = new CornerRadius(11),
+                Padding = new Thickness(10, 0, 10, 0),
+                MinHeight = 22,
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(0, -4, -4, 0)
