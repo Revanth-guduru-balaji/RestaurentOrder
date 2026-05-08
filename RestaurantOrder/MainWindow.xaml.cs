@@ -18,12 +18,6 @@ public partial class MainWindow : Window
             Navigate(tag);
     }
 
-    private void Settings_Click(object sender, RoutedEventArgs e)
-    {
-        var dlg = new SettingsWindow { Owner = this };
-        dlg.ShowDialog();
-    }
-
     private void Navigate(string key)
     {
         UserControl page = key switch
@@ -32,6 +26,7 @@ public partial class MainWindow : Window
             "Order" => new OrderPage(),
             "Inventory" => new InventoryPage(),
             "History" => new OrderHistoryPage(),
+            "Settings" => new SettingsPage(),
             _ => new DashboardPage()
         };
         ContentHost.Content = page;

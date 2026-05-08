@@ -188,6 +188,19 @@ public static class ReceiptPrinter
 
         doc.Blocks.Add(MakeRule(compact));
 
+        // Subtotal row (always shown)
+        AddTotalLine(doc, "Subtotal", Money.Format(total), subSize, FontWeights.Normal);
+        if (order.TaxAmount > 0m)
+            AddTotalLine(doc, "Tax", Money.Format(order.TaxAmount), subSize, FontWeights.Normal);
+        if (order.DiscountAmount > 0m)
+            AddTotalLine(doc, "Discount", "− " + Money.Format(order.DiscountAmount), subSize, FontWeights.Normal);
+        if (order.RoundingAmount != 0m)
+            AddTotalLine(doc, "Rounding",
+                (order.RoundingAmount >= 0 ? "+ " : "− ") + Money.Format(Math.Abs(order.RoundingAmount)),
+                subSize, FontWeights.Normal);
+
+        doc.Blocks.Add(MakeRule(compact));
+
         var totals = new Paragraph
         {
             FontSize = totalSize,
@@ -195,7 +208,7 @@ public static class ReceiptPrinter
             TextAlignment = TextAlignment.Right,
             Margin = new Thickness(0)
         };
-        totals.Inlines.Add(new Run($"Items: {totalQty}    Total: {Money.Format(total)}"));
+        totals.Inlines.Add(new Run($"Items: {totalQty}    Total: {Money.Format(order.Total > 0 ? order.Total : total)}"));
         doc.Blocks.Add(totals);
 
         if (!string.IsNullOrWhiteSpace(order.Notes))
@@ -228,6 +241,30 @@ public static class ReceiptPrinter
         }
 
         return doc;
+    }
+
+    private static void AddTotalLine(FlowDocument doc, string label, string value, double fontSize, FontWeight weight)
+    {
+        var p = new Paragraph
+        {
+            FontSize = fontSize,
+            FontWeight = weight,
+            Margin = new Thickness(0)
+        };
+        p.Inlines.Add(new Run(label));
+        p.Inlines.Add(new Run("\t" + value) { });
+        // Use a Table-like trick: just right-align via a tab-spaced run isn't ideal in FlowDocument.
+        // Simplest reliable approach: render as a single paragraph with right-aligned value run.
+        p.Inlines.Clear();
+        p.Inlines.Add(new Run(label));
+        var space = new Run(value)
+        {
+            FontWeight = weight
+        };
+        p.Inlines.Add(new Run("    ")); // visual gap; the receipt is fixed width so this reads okay
+        p.Inlines.Add(space);
+        p.TextAlignment = TextAlignment.Right;
+        doc.Blocks.Add(p);
     }
 
     private static TableCell MakeCell(string text, FontWeight weight, bool compact, TextAlignment alignment = TextAlignment.Left)

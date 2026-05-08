@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Input;
 using RestaurantOrder.Data;
 using MenuItem = RestaurantOrder.Data.MenuItem;
 
@@ -7,6 +9,7 @@ namespace RestaurantOrder.Views;
 
 public partial class EditItemWindow : Window
 {
+    private static readonly Regex IntRegex = new(@"^[0-9]+$", RegexOptions.Compiled);
     public MenuItem? Result { get; private set; }
 
     public EditItemWindow(MenuItem? existing)
@@ -18,10 +21,20 @@ public partial class EditItemWindow : Window
             NameBox.Text = existing.Name;
             CategoryBox.Text = existing.Category;
             PriceBox.Text = existing.Price.ToString("0.00", CultureInfo.InvariantCulture);
+            EstQtyBox.Text = existing.EstimatedAvailableQty.ToString(CultureInfo.InvariantCulture);
+            AvailQtyBox.Text = existing.AvailableQty.ToString(CultureInfo.InvariantCulture);
             AvailableBox.IsChecked = existing.IsAvailable;
             Result = existing;
         }
+        else
+        {
+            EstQtyBox.Text = "0";
+            AvailQtyBox.Text = "0";
+        }
     }
+
+    private void IntOnly_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        => e.Handled = !IntRegex.IsMatch(e.Text);
 
     private void Cancel_Click(object sender, RoutedEventArgs e) { DialogResult = false; Close(); }
 
@@ -39,10 +52,21 @@ public partial class EditItemWindow : Window
         }
         if (price < 0) { MessageBox.Show("Price cannot be negative."); return; }
 
+        if (!int.TryParse(EstQtyBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var estQty) || estQty < 0)
+        {
+            MessageBox.Show("Estimated qty must be a non-negative whole number."); return;
+        }
+        if (!int.TryParse(AvailQtyBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var availQty) || availQty < 0)
+        {
+            MessageBox.Show("Available qty must be a non-negative whole number."); return;
+        }
+
         Result ??= new MenuItem();
         Result.Name = name;
         Result.Category = (CategoryBox.Text ?? "").Trim();
         Result.Price = price;
+        Result.EstimatedAvailableQty = estQty;
+        Result.AvailableQty = estQty == 0 ? 0 : availQty;
         Result.IsAvailable = AvailableBox.IsChecked == true;
         DialogResult = true;
         Close();

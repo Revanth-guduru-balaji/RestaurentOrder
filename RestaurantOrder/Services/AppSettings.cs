@@ -13,6 +13,22 @@ public class AppSettings
     public bool CompactReceipt { get; set; } = true;
     public bool AutoPrint { get; set; } = true;
 
+    // Whether placing an order should also print a receipt.
+    // false = "Place Order" only, true = "Place & Print".
+    public bool PrintAfterPlace { get; set; } = true;
+
+    // Show available qty in Take Order item card when below threshold.
+    public bool ShowLowStockBadge { get; set; } = true;
+    public int LowStockThreshold { get; set; } = 10;
+
+    // ---- Pricing breakdown ----
+    // Tax applied to subtotal (e.g. 5 = 5% GST). 0 disables the line.
+    public decimal TaxPercent { get; set; } = 0m;
+    // Auto round Total to nearest rupee; the rounding-off line shows the delta.
+    public bool RoundToNearestRupee { get; set; } = true;
+    // Show the discount input on the Take Order cart.
+    public bool EnableDiscountField { get; set; } = true;
+
     private static readonly object _lock = new();
     private static AppSettings? _current;
 

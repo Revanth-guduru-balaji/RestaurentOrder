@@ -8,5 +8,6 @@ public partial class App : Application
     {
         base.OnStartup(e);
         Data.Database.Initialize();
+        Data.Database.ResetDailyStockIfNeeded();
     }
 }

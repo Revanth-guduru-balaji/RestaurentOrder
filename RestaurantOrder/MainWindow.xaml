@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="http://schemas.modernwpf.com/2019"
         xmlns:local="clr-namespace:RestaurantOrder"
+        xmlns:controls="clr-namespace:RestaurantOrder.Controls"
         mc:Ignorable="d"
         ui:WindowHelper.UseModernWindowStyle="True"
         Title="Araya Vysya SSV — Restaurant Manager"
@@ -23,50 +24,37 @@
         <Border Grid.Column="0" Background="{StaticResource BrandSidebarBrush}">
             <DockPanel LastChildFill="True">
 
-                <!-- Brand header -->
-                <Border DockPanel.Dock="Top" Padding="22,28,22,18">
-                    <StackPanel>
-                        <TextBlock Text="🍽" FontSize="30" Foreground="{StaticResource BrandAccentBrush}" />
-                        <TextBlock Text="Araya Vysya SSV"
-                                   FontSize="20" FontWeight="SemiBold"
-                                   Foreground="White" Margin="0,4,0,0" />
-                        <TextBlock Text="Restaurant Manager"
-                                   FontSize="11"
-                                   Foreground="#FF9CA3AF" Margin="0,2,0,0" />
+                <!-- Brand header (compact markBox lockup) -->
+                <Border DockPanel.Dock="Top" Padding="18,22,18,18">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource BrandMarkBox}" VerticalAlignment="Center">
+                            <controls:LogoMark Width="26" Height="26" />
+                        </Border>
+                        <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Araya Vysya SSV"
+                                       FontSize="15" FontWeight="SemiBold"
+                                       Foreground="White" />
+                            <TextBlock Text="RESTAURANT MANAGER"
+                                       FontSize="10"
+                                       Foreground="#FF9CA3AF" Margin="0,2,0,0" />
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <!-- Footer -->
-                <Border DockPanel.Dock="Bottom" Padding="14,12,14,18">
+                <Border DockPanel.Dock="Bottom" Padding="22,14,22,18">
                     <StackPanel>
-                        <Button Content="⚙  Settings"
-                                Click="Settings_Click"
-                                HorizontalContentAlignment="Left"
-                                Padding="14,10"
-                                Margin="0,0,0,12"
-                                Background="Transparent"
-                                Foreground="#FFE5E7EB"
-                                BorderThickness="0"
-                                Cursor="Hand">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                            CornerRadius="8" Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter VerticalAlignment="Center"
-                                                          TextElement.Foreground="{TemplateBinding Foreground}" />
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
-                        <TextBlock Text="Local · Offline"
-                                   Foreground="#FF9CA3AF" FontSize="11" Margin="8,0,0,0" />
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="6" Height="6" Fill="{StaticResource BrandAccentBrush}"
+                                     VerticalAlignment="Center" />
+                            <TextBlock Text="Local · Offline"
+                                       Foreground="#FF9CA3AF" FontSize="11"
+                                       Margin="8,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
                         <TextBlock Text="v1.0"
-                                   Foreground="#FF6B7280" FontSize="10" Margin="8,2,0,0" />
+                                   Foreground="#FF6B7280" FontSize="10"
+                                   FontFamily="Cascadia Mono, Consolas"
+                                   Margin="0,4,0,0" />
                     </StackPanel>
                 </Border>
 
@@ -75,29 +63,41 @@
                     <RadioButton x:Name="NavDashboard" Style="{StaticResource NavButton}" IsChecked="True"
                                  Click="Nav_Click" Tag="Dashboard">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="📊" FontSize="16" Margin="0,0,12,0" />
+                            <TextBlock Text="" FontFamily="{StaticResource BrandIconFontFamily}"
+                                       FontSize="15" Margin="0,0,12,0" Width="18" TextAlignment="Center" />
                             <TextBlock Text="Dashboard" VerticalAlignment="Center" />
                         </StackPanel>
                     </RadioButton>
                     <RadioButton x:Name="NavOrder" Style="{StaticResource NavButton}"
                                  Click="Nav_Click" Tag="Order">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="🛒" FontSize="16" Margin="0,0,12,0" />
+                            <TextBlock Text="" FontFamily="{StaticResource BrandIconFontFamily}"
+                                       FontSize="15" Margin="0,0,12,0" Width="18" TextAlignment="Center" />
                             <TextBlock Text="Take Order" VerticalAlignment="Center" />
                         </StackPanel>
                     </RadioButton>
                     <RadioButton x:Name="NavInventory" Style="{StaticResource NavButton}"
                                  Click="Nav_Click" Tag="Inventory">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="📋" FontSize="16" Margin="0,0,12,0" />
+                            <TextBlock Text="" FontFamily="{StaticResource BrandIconFontFamily}"
+                                       FontSize="15" Margin="0,0,12,0" Width="18" TextAlignment="Center" />
                             <TextBlock Text="Inventory" VerticalAlignment="Center" />
                         </StackPanel>
                     </RadioButton>
                     <RadioButton x:Name="NavHistory" Style="{StaticResource NavButton}"
                                  Click="Nav_Click" Tag="History">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="📜" FontSize="16" Margin="0,0,12,0" />
+                            <TextBlock Text="" FontFamily="{StaticResource BrandIconFontFamily}"
+                                       FontSize="15" Margin="0,0,12,0" Width="18" TextAlignment="Center" />
                             <TextBlock Text="Order History" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="NavSettings" Style="{StaticResource NavButton}"
+                                 Click="Nav_Click" Tag="Settings">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="" FontFamily="{StaticResource BrandIconFontFamily}"
+                                       FontSize="15" Margin="0,0,12,0" Width="18" TextAlignment="Center" />
+                            <TextBlock Text="Settings" VerticalAlignment="Center" />
                         </StackPanel>
                     </RadioButton>
                 </StackPanel>

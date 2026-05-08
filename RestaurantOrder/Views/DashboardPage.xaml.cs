@@ -164,7 +164,7 @@ public partial class DashboardPage : UserControl
         CategoryList.ItemsSource = catVm;
         EmptyCategory.Visibility = catVm.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        StoragePathText.Text = $"💾 Local data file: {Database.DbPath}";
+        StoragePathText.Text = $"Local data file: {Database.DbPath}";
     }
 
     private static void ApplyDelta(TextBlock label, decimal current, decimal prev)

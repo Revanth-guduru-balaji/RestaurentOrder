@@ -4,8 +4,97 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ui="http://schemas.modernwpf.com/2019"
+             xmlns:c="clr-namespace:RestaurantOrder.Controls"
+             xmlns:local="clr-namespace:RestaurantOrder.Views"
              mc:Ignorable="d"
              Background="{StaticResource BrandSurfaceBrush}">
+
+    <UserControl.Resources>
+        <!-- Heterogeneous list templates -->
+        <DataTemplate DataType="{x:Type local:DayDividerVm}">
+            <Border Style="{StaticResource DayDividerBand}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding LabelText}" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{StaticResource BrandSubtleTextDarkBrush}" />
+                    <TextBlock Grid.Column="1" Text="{Binding TotalText}" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{StaticResource BrandTextBrush}" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type local:OrderRowVm}">
+            <Border Background="{Binding RowBackground}"
+                    BorderBrush="#FFF1F5F9"
+                    BorderThickness="0,0,0,1"
+                    Cursor="Hand"
+                    Opacity="{Binding RowItemOpacity}"
+                    Padding="{Binding RowPadding}">
+                <Border.InputBindings>
+                    <MouseBinding MouseAction="LeftClick"
+                                  Command="{Binding SelectCommand}" />
+                </Border.InputBindings>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="64" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{Binding IdText}"
+                               FontFamily="Cascadia Mono, Consolas"
+                               FontSize="13" FontWeight="SemiBold"
+                               Foreground="{StaticResource BrandSubtleTextDarkBrush}"
+                               VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding CustomerName}"
+                                       FontWeight="SemiBold" FontSize="14"
+                                       Foreground="{StaticResource BrandTextBrush}"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center" />
+                            <Border Style="{StaticResource PaymentChip}"
+                                    Background="{Binding PayBg}"
+                                    Margin="8,0,0,0">
+                                <TextBlock Text="{Binding PaymentMethodUpper}"
+                                           FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{Binding PayFg}" />
+                            </Border>
+                            <Border Style="{StaticResource PaymentChip}"
+                                    Background="{StaticResource DangerBgBrush}"
+                                    Margin="8,0,0,0"
+                                    Visibility="{Binding VoidedBadgeVisibility}">
+                                <TextBlock Text="VOIDED"
+                                           FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{StaticResource DangerFgBrush}" />
+                            </Border>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                            <TextBlock Text="{Binding TimeText}" FontSize="11"
+                                       Foreground="{StaticResource BrandSubtleTextBrush}" />
+                            <TextBlock Text="·" FontSize="11"
+                                       Foreground="{StaticResource BrandSubtleTextBrush}"
+                                       Margin="6,0" />
+                            <TextBlock Text="{Binding ItemsText}" FontSize="11"
+                                       Foreground="{StaticResource BrandSubtleTextBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                        <TextBlock Text="{Binding TotalText}"
+                                   FontWeight="SemiBold" FontSize="14"
+                                   Foreground="{StaticResource BrandTextBrush}"
+                                   HorizontalAlignment="Right" />
+                        <TextBlock Text="{Binding PiecesText}" FontSize="11"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}"
+                                   HorizontalAlignment="Right" Margin="0,2,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
     <Grid Margin="28,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -13,108 +102,271 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <WrapPanel Grid.Row="0" Orientation="Horizontal">
-            <StackPanel MinWidth="200" Margin="0,0,24,8" VerticalAlignment="Center">
-                <TextBlock Text="Order History" Style="{StaticResource PageTitle}" />
-                <TextBlock Text="Searchable list of past orders" Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
-            </StackPanel>
-            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
-                <DatePicker x:Name="FromDate" Margin="0,0,8,8" SelectedDateChanged="DateRange_Changed" />
-                <TextBlock Text="–" VerticalAlignment="Center" Margin="0,0,8,8" />
-                <DatePicker x:Name="ToDate" Margin="0,0,8,8" SelectedDateChanged="DateRange_Changed" />
-                <Button Content="Today" Style="{StaticResource GhostButton}" Margin="0,0,8,8" Click="Today_Click" />
-                <Button Content="This week" Style="{StaticResource GhostButton}" Margin="0,0,8,8" Click="Week_Click" />
-                <Button Content="This month" Style="{StaticResource GhostButton}" Margin="0,0,0,8" Click="Month_Click" />
-            </WrapPanel>
-        </WrapPanel>
-
-        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,18,0,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name="SearchBox"
-                         ui:ControlHelper.PlaceholderText="Search by order # or customer name..."
-                         FontSize="13"
-                         TextChanged="SearchBox_TextChanged" />
-                <TextBlock Grid.Column="1" x:Name="CountText" VerticalAlignment="Center"
-                           Margin="16,0,16,0" Foreground="{StaticResource BrandSubtleTextBrush}" />
-                <TextBlock Grid.Column="2" x:Name="TotalText" VerticalAlignment="Center"
-                           FontWeight="SemiBold" />
-            </Grid>
-        </Border>
-
-        <Grid Grid.Row="2">
+        <!-- Page head -->
+        <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*" />
-                <ColumnDefinition Width="8" />
-                <ColumnDefinition Width="*" MinWidth="320" MaxWidth="440" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock Text="Order History" Style="{StaticResource PageTitle}" />
+                <TextBlock Text="Past orders · click any row to see receipt details · reprint anytime"
+                           Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
+            </StackPanel>
+            <WrapPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                <Border Background="White" BorderBrush="{StaticResource BrandBorderBrush}" BorderThickness="1"
+                        CornerRadius="6" Padding="6,2" Margin="0,0,8,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <DatePicker x:Name="FromDate" BorderThickness="0" Background="Transparent"
+                                    Width="118" SelectedDateChanged="DateRange_Changed" />
+                        <TextBlock Text="→" Margin="2,0" VerticalAlignment="Center"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}" />
+                        <DatePicker x:Name="ToDate" BorderThickness="0" Background="Transparent"
+                                    Width="118" SelectedDateChanged="DateRange_Changed" />
+                    </StackPanel>
+                </Border>
+                <Border Background="White" BorderBrush="{StaticResource BrandBorderBrush}" BorderThickness="1"
+                        CornerRadius="6" Padding="2" Margin="0,0,8,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="RangeToday" GroupName="OhRange" Style="{StaticResource SegmentRadio}"
+                                     Padding="14,6" Click="Today_Click">Today</RadioButton>
+                        <RadioButton x:Name="RangeWeek"  GroupName="OhRange" Style="{StaticResource SegmentRadio}"
+                                     Padding="14,6" IsChecked="True" Click="Week_Click">Week</RadioButton>
+                        <RadioButton x:Name="RangeMonth" GroupName="OhRange" Style="{StaticResource SegmentRadio}"
+                                     Padding="14,6" Click="Month_Click">Month</RadioButton>
+                    </StackPanel>
+                </Border>
+                <Button Style="{StaticResource GhostButton}" Padding="14,6" Click="ExportCsv_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource IconGlyphSmall}" Text="" Margin="0,0,6,0"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}" />
+                        <TextBlock Text="Export CSV" />
+                    </StackPanel>
+                </Button>
+            </WrapPanel>
+        </Grid>
+
+        <!-- KPI strip + sparkline -->
+        <Grid Grid.Row="1" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="1.4*" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="0">
-                <DataGrid x:Name="OrdersGrid"
-                          AutoGenerateColumns="False"
-                          CanUserAddRows="False"
-                          CanUserDeleteRows="False"
-                          IsReadOnly="True"
-                          HeadersVisibility="Column"
-                          SelectionMode="Single"
-                          RowHeight="36"
-                          GridLinesVisibility="Horizontal"
-                          BorderThickness="0"
-                          Background="Transparent"
-                          RowBackground="White"
-                          AlternatingRowBackground="#FFF9FAFB"
-                          SelectionChanged="OrdersGrid_SelectionChanged">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Order #" Binding="{Binding IdText}" Width="90" />
-                        <DataGridTextColumn Header="Date" Binding="{Binding DateText}" Width="170" />
-                        <DataGridTextColumn Header="Customer" Binding="{Binding CustomerName}" Width="*" />
-                        <DataGridTextColumn Header="Pay" Binding="{Binding PaymentMethod}" Width="80" />
-                        <DataGridTextColumn Header="Total" Binding="{Binding TotalText}" Width="110" />
-                    </DataGrid.Columns>
-                </DataGrid>
+            <Border Grid.Column="0" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <TextBlock Text="ORDERS" Style="{StaticResource KpiLabel}" FontWeight="SemiBold" />
+                    <TextBlock x:Name="KpiOrdersValue" Style="{StaticResource KpiValue}"
+                               FontSize="22" Margin="0,6,0,0" />
+                    <TextBlock x:Name="KpiOrdersSub" FontSize="11"
+                               Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,2,0,0" />
+                </StackPanel>
             </Border>
 
-            <Border Grid.Column="2" Style="{StaticResource Card}">
+            <Border Grid.Column="2" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <TextBlock Text="REVENUE" Style="{StaticResource KpiLabel}" FontWeight="SemiBold" />
+                    <TextBlock x:Name="KpiRevenueValue" Style="{StaticResource KpiValue}"
+                               FontSize="22" Margin="0,6,0,0" />
+                    <TextBlock x:Name="KpiRevenueSub" FontSize="11"
+                               Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,2,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="4" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <TextBlock Text="AVG TICKET" Style="{StaticResource KpiLabel}" FontWeight="SemiBold" />
+                    <TextBlock x:Name="KpiAvgValue" Style="{StaticResource KpiValue}"
+                               FontSize="22" Margin="0,6,0,0" />
+                    <TextBlock Text="per order" FontSize="11"
+                               Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,2,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="6" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <TextBlock Text="REPRINTS" Style="{StaticResource KpiLabel}" FontWeight="SemiBold" />
+                    <TextBlock x:Name="KpiReprintsValue" Style="{StaticResource KpiValue}"
+                               FontSize="22" Margin="0,6,0,0" Text="0" />
+                    <TextBlock x:Name="KpiReprintsSub" Text="0% of orders" FontSize="11"
+                               Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,2,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="8" Style="{StaticResource KpiCard}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0">
-                        <TextBlock x:Name="DetailTitle" Text="Order details" Style="{StaticResource SectionTitle}" Margin="0,0,0,4" />
-                        <TextBlock x:Name="DetailSub" Foreground="{StaticResource BrandSubtleTextBrush}" FontSize="12" Margin="0,0,0,12" />
-                    </StackPanel>
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <StackPanel x:Name="DetailItems" />
-                    </ScrollViewer>
-                    <Border Grid.Row="2" Margin="0,12,0,0" Padding="0,12,0,0"
-                            BorderBrush="{StaticResource BrandBorderBrush}" BorderThickness="0,1,0,0">
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="ORDERS / DAY" Style="{StaticResource KpiLabel}" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="1" x:Name="SparkPeak" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource BrandTextBrush}" />
+                    </Grid>
+                    <c:LineChart x:Name="Spark" Grid.Row="1" Margin="0,4,0,0" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Body: list + detail -->
+        <Grid Grid.Row="2" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.7*" MinWidth="380" />
+                <ColumnDefinition Width="14" />
+                <ColumnDefinition Width="*" MinWidth="320" />
+            </Grid.ColumnDefinitions>
+
+            <!-- List card -->
+            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="{StaticResource BrandSoftSurfaceAltBrush}"
+                            BorderBrush="{StaticResource BrandBorderBrush}"
+                            BorderThickness="0,0,0,1"
+                            CornerRadius="10,10,0,0"
+                            Padding="10,10">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
+                            <Border Background="White" BorderBrush="{StaticResource BrandBorderBrush}"
+                                    BorderThickness="1" CornerRadius="6" Padding="10,4">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource IconGlyph}" Text=""
+                                               FontSize="13"
+                                               Foreground="{StaticResource BrandSubtleTextBrush}"
+                                               Margin="2,0,8,0" />
+                                    <TextBox Grid.Column="1" x:Name="SearchBox"
+                                             Background="Transparent" BorderThickness="0"
+                                             ui:ControlHelper.PlaceholderText="Search by order # or customer…"
+                                             FontSize="14" VerticalContentAlignment="Center"
+                                             TextChanged="SearchBox_TextChanged" />
+                                </Grid>
+                            </Border>
+                            <TextBlock Grid.Column="1" x:Name="CountText" VerticalAlignment="Center"
+                                       Margin="14,0,4,0"
+                                       FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{StaticResource BrandSubtleTextDarkBrush}" />
+                        </Grid>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="OrdersList" />
+                    </ScrollViewer>
+
+                    <TextBlock Grid.Row="1" x:Name="EmptyState"
+                               Text="No orders match the current filters."
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{StaticResource BrandSubtleTextBrush}"
+                               Visibility="Collapsed" />
+                </Grid>
+            </Border>
+
+            <!-- Detail card -->
+            <Border Grid.Column="2" Style="{StaticResource Card}" Padding="0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Detail head -->
+                    <Border Grid.Row="0" Padding="18,16"
+                            BorderBrush="{StaticResource BrandBorderBrush}" BorderThickness="0,0,0,1">
+                        <StackPanel>
                             <StackPanel Orientation="Horizontal">
-                                <Button x:Name="ReprintButton" Content="Reprint"
-                                        Style="{StaticResource GhostButton}"
-                                        IsEnabled="False"
-                                        Click="Reprint_Click" />
-                                <TextBlock x:Name="ReprintFeedback"
-                                           VerticalAlignment="Center"
-                                           Margin="10,0,0,0"
-                                           FontSize="11"
-                                           Foreground="{StaticResource BrandSuccessBrush}"
-                                           Visibility="Collapsed" />
+                                <TextBlock x:Name="DetailTitle" Text="Order details"
+                                           FontSize="17" FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrandTextBrush}"
+                                           VerticalAlignment="Center" />
+                                <Border x:Name="StatusBadgeClosed" Background="{StaticResource SuccessBgBrush}"
+                                        CornerRadius="9999" Padding="8,3" Margin="10,0,0,0"
+                                        VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="6" Height="6" Fill="{StaticResource SuccessFgBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,5,0" />
+                                        <TextBlock Text="CLOSED" FontSize="10" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource SuccessFgBrush}"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                                <Border x:Name="StatusBadgeVoided" Background="{StaticResource DangerBgBrush}"
+                                        CornerRadius="9999" Padding="8,3" Margin="10,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Visibility="Collapsed">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="6" Height="6" Fill="{StaticResource DangerFgBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,5,0" />
+                                        <TextBlock Text="VOIDED" FontSize="10" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource DangerFgBrush}"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
-                            <TextBlock Grid.Column="1" x:Name="DetailTotalText"
-                                       FontSize="20" FontWeight="Bold"
-                                       Foreground="{StaticResource BrandPrimaryBrush}"
-                                       VerticalAlignment="Center" />
+                            <WrapPanel x:Name="DetailMetaPanel" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Detail items -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,8">
+                        <StackPanel x:Name="DetailItems" />
+                    </ScrollViewer>
+
+                    <!-- Detail totals -->
+                    <Border Grid.Row="2" Padding="18,14"
+                            Background="#FFFAFCFD"
+                            BorderBrush="{StaticResource BrandBorderBrush}" BorderThickness="0,1,0,0">
+                        <StackPanel x:Name="DetailTotalsPanel" />
+                    </Border>
+
+                    <!-- Action bar -->
+                    <Border Grid.Row="3" Padding="14,12"
+                            BorderBrush="{StaticResource BrandBorderBrush}" BorderThickness="0,1,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="VoidButton" Grid.Column="0"
+                                    Style="{StaticResource DangerButton}"
+                                    IsEnabled="False"
+                                    Click="VoidOrder_Click">
+                                <TextBlock x:Name="VoidButtonText" Text="Void order" />
+                            </Button>
+                            <Button x:Name="ReprintButton" Grid.Column="2"
+                                    Style="{StaticResource PrimaryButton}"
+                                    IsEnabled="False"
+                                    Click="Reprint_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource IconGlyphSmall}" Text=""
+                                               Foreground="White" Margin="0,0,6,0" />
+                                    <TextBlock Text="Reprint receipt" />
+                                </StackPanel>
+                            </Button>
                         </Grid>
                     </Border>
                 </Grid>

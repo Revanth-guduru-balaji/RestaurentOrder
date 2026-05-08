@@ -20,7 +20,7 @@
 
         <Border Grid.Row="0" Background="{StaticResource BrandSuccessBrush}" Padding="22,18">
             <StackPanel>
-                <TextBlock Text="✓ Order placed successfully"
+                <TextBlock Text="Order placed successfully"
                            Foreground="White" FontSize="16" FontWeight="SemiBold" />
                 <TextBlock x:Name="OrderInfoText" Foreground="#FFE0F2E0" FontSize="12" Margin="0,2,0,0" />
             </StackPanel>

@@ -26,7 +26,26 @@
         <TextBlock Text="Price (₹)" Margin="0,12,0,4" />
         <TextBox x:Name="PriceBox" />
 
-        <CheckBox x:Name="AvailableBox" Content="Available for ordering"
+        <Grid Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Estimated qty / day" Margin="0,0,0,4" />
+                <TextBox x:Name="EstQtyBox" PreviewTextInput="IntOnly_PreviewTextInput" />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="Available qty (now)" Margin="0,0,0,4" />
+                <TextBox x:Name="AvailQtyBox" PreviewTextInput="IntOnly_PreviewTextInput" />
+            </StackPanel>
+        </Grid>
+        <TextBlock Text="Set estimated qty to 0 to leave stock untracked for this item."
+                   Foreground="{StaticResource BrandSubtleTextBrush}" FontSize="11"
+                   Margin="0,4,0,0" TextWrapping="Wrap" />
+
+        <CheckBox x:Name="AvailableBox" Content="Active for ordering"
                   IsChecked="True" Margin="0,16,0,0" />
 
         <Grid Margin="0,24,0,0">

@@ -16,10 +16,16 @@ public static class OrderRepository
 
         using (var cmd = conn.CreateCommand())
         {
-            cmd.CommandText = @"INSERT INTO Orders (CreatedAt, Total, PaymentMethod, CustomerName, Notes)
-                                VALUES ($t,$tot,$pm,$cn,$nt);
+            cmd.CommandText = @"INSERT INTO Orders
+                                (CreatedAt, Subtotal, TaxAmount, DiscountAmount, RoundingAmount,
+                                 Total, PaymentMethod, CustomerName, Notes, IsVoided)
+                                VALUES ($t,$sub,$tax,$disc,$rnd,$tot,$pm,$cn,$nt,0);
                                 SELECT last_insert_rowid();";
             cmd.Parameters.AddWithValue("$t", order.CreatedAt.ToString(Iso, CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("$sub", (double)order.Subtotal);
+            cmd.Parameters.AddWithValue("$tax", (double)order.TaxAmount);
+            cmd.Parameters.AddWithValue("$disc", (double)order.DiscountAmount);
+            cmd.Parameters.AddWithValue("$rnd", (double)order.RoundingAmount);
             cmd.Parameters.AddWithValue("$tot", (double)order.Total);
             cmd.Parameters.AddWithValue("$pm", order.PaymentMethod ?? "Cash");
             cmd.Parameters.AddWithValue("$cn", (object?)order.CustomerName ?? DBNull.Value);
@@ -50,10 +56,21 @@ public static class OrderRepository
         var orders = new List<Order>();
         using (var cmd = conn.CreateCommand())
         {
-            var where = "CreatedAt >= $f AND CreatedAt < $t";
+            var where = "o.CreatedAt >= $f AND o.CreatedAt < $t";
             if (!string.IsNullOrWhiteSpace(search))
-                where += " AND (CAST(Id AS TEXT) LIKE $s OR IFNULL(CustomerName,'') LIKE $s)";
-            cmd.CommandText = $"SELECT Id, CreatedAt, Total, PaymentMethod, CustomerName, Notes FROM Orders WHERE {where} ORDER BY CreatedAt DESC";
+                where += " AND (CAST(o.Id AS TEXT) LIKE $s OR IFNULL(o.CustomerName,'') LIKE $s)";
+            cmd.CommandText = $@"SELECT o.Id, o.CreatedAt,
+                                        o.Subtotal, o.TaxAmount, o.DiscountAmount, o.RoundingAmount,
+                                        o.Total, o.PaymentMethod, o.CustomerName, o.Notes, o.IsVoided,
+                                        IFNULL(s.LineCount,0) AS LineCount,
+                                        IFNULL(s.PieceCount,0) AS PieceCount
+                                 FROM Orders o
+                                 LEFT JOIN (
+                                     SELECT OrderId, COUNT(*) AS LineCount, SUM(Quantity) AS PieceCount
+                                     FROM OrderItems GROUP BY OrderId
+                                 ) s ON s.OrderId = o.Id
+                                 WHERE {where}
+                                 ORDER BY o.CreatedAt DESC";
             cmd.Parameters.AddWithValue("$f", from.ToString(Iso, CultureInfo.InvariantCulture));
             cmd.Parameters.AddWithValue("$t", to.ToString(Iso, CultureInfo.InvariantCulture));
             if (!string.IsNullOrWhiteSpace(search))
@@ -65,14 +82,51 @@ public static class OrderRepository
                 {
                     Id = rdr.GetInt32(0),
                     CreatedAt = DateTime.ParseExact(rdr.GetString(1), Iso, CultureInfo.InvariantCulture),
-                    Total = (decimal)rdr.GetDouble(2),
-                    PaymentMethod = rdr.GetString(3),
-                    CustomerName = rdr.IsDBNull(4) ? null : rdr.GetString(4),
-                    Notes = rdr.IsDBNull(5) ? null : rdr.GetString(5),
+                    Subtotal = (decimal)rdr.GetDouble(2),
+                    TaxAmount = (decimal)rdr.GetDouble(3),
+                    DiscountAmount = (decimal)rdr.GetDouble(4),
+                    RoundingAmount = (decimal)rdr.GetDouble(5),
+                    Total = (decimal)rdr.GetDouble(6),
+                    PaymentMethod = rdr.GetString(7),
+                    CustomerName = rdr.IsDBNull(8) ? null : rdr.GetString(8),
+                    Notes = rdr.IsDBNull(9) ? null : rdr.GetString(9),
+                    IsVoided = rdr.GetInt32(10) == 1,
+                    LineCount = rdr.GetInt32(11),
+                    PieceCount = rdr.GetInt32(12),
                 });
             }
         }
         return orders;
+    }
+
+    public static void SetVoided(int orderId, bool voided)
+    {
+        using var conn = Database.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE Orders SET IsVoided=$v WHERE Id=$id";
+        cmd.Parameters.AddWithValue("$v", voided ? 1 : 0);
+        cmd.Parameters.AddWithValue("$id", orderId);
+        cmd.ExecuteNonQuery();
+    }
+
+    public static void LogReprint(int orderId)
+    {
+        using var conn = Database.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "INSERT INTO ReprintLog (OrderId, CreatedAt) VALUES ($id, $t)";
+        cmd.Parameters.AddWithValue("$id", orderId);
+        cmd.Parameters.AddWithValue("$t", DateTime.Now.ToString(Iso, CultureInfo.InvariantCulture));
+        cmd.ExecuteNonQuery();
+    }
+
+    public static int CountReprintsBetween(DateTime from, DateTime to)
+    {
+        using var conn = Database.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM ReprintLog WHERE CreatedAt >= $f AND CreatedAt < $t";
+        cmd.Parameters.AddWithValue("$f", from.ToString(Iso, CultureInfo.InvariantCulture));
+        cmd.Parameters.AddWithValue("$t", to.ToString(Iso, CultureInfo.InvariantCulture));
+        return Convert.ToInt32((long)(cmd.ExecuteScalar() ?? 0L));
     }
 
     public static List<OrderItem> GetItems(int orderId)

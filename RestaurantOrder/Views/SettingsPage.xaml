@@ -1,0 +1,643 @@
+<UserControl x:Class="RestaurantOrder.Views.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="http://schemas.modernwpf.com/2019"
+             mc:Ignorable="d"
+             Background="{StaticResource BrandSurfaceBrush}">
+
+    <UserControl.Resources>
+        <!-- Card-head icon box (32x32 cyan-tinted) -->
+        <Style x:Key="CardHeadIconBox" TargetType="Border">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Background" Value="{StaticResource InfoBgBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+        <Style x:Key="CardHeadIconText" TargetType="TextBlock" BasedOn="{StaticResource IconGlyph}">
+            <Setter Property="Foreground" Value="{StaticResource BrandPrimaryDarkBrush}" />
+            <Setter Property="FontSize" Value="14" />
+        </Style>
+        <Style x:Key="CardHeadTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource BrandTextBrush}" />
+        </Style>
+        <Style x:Key="CardHeadSub" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{StaticResource BrandSubtleTextBrush}" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <!-- Section nav rail item (toggle-style) -->
+        <Style x:Key="SectionNavItem" TargetType="RadioButton">
+            <Setter Property="GroupName" Value="SettingsSection" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="{StaticResource BrandSubtleTextDarkBrush}" />
+            <Setter Property="Padding" Value="10,9" />
+            <Setter Property="Margin" Value="0,0,0,2" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}"
+                                              TextElement.FontSize="{TemplateBinding FontSize}"
+                                              TextElement.FontWeight="{TemplateBinding FontWeight}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="White" />
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BrandBorderBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource BrandPrimaryDarkBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Card-style checkbox row (custom check + name + desc) -->
+        <Style x:Key="CheckRow" TargetType="CheckBox">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="10,10" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="Bd"
+                                Background="Transparent"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="Box"
+                                        Width="20" Height="20"
+                                        CornerRadius="5"
+                                        BorderBrush="{StaticResource BrandBorderBrush}"
+                                        BorderThickness="1.5"
+                                        Background="White"
+                                        VerticalAlignment="Top"
+                                        Margin="0,1,12,0">
+                                    <TextBlock x:Name="Tick"
+                                               FontFamily="{StaticResource BrandIconFontFamily}"
+                                               Text=""
+                                               FontSize="12"
+                                               Foreground="White"
+                                               Visibility="Collapsed"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+                                <ContentPresenter Grid.Column="1"
+                                                  VerticalAlignment="Center"
+                                                  TextElement.Foreground="{StaticResource BrandTextBrush}" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource BrandSoftSurfaceAltBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="{StaticResource BrandPrimaryBrush}" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource BrandPrimaryBrush}" />
+                                <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="{StaticResource BrandSubtleTextDarkBrush}" />
+            <Setter Property="Margin" Value="0,0,0,5" />
+        </Style>
+        <Style x:Key="FieldHint" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource BrandSubtleTextBrush}" />
+            <Setter Property="Margin" Value="0,5,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="28,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Page head -->
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="Settings" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="Receipt header, default printer, stock display and order placement"
+                       Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
+        </StackPanel>
+
+        <!-- Body: form (left) + receipt preview (right) -->
+        <Grid Grid.Row="1" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="360" MinWidth="320" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Settings column: nav rail + form stack -->
+            <Grid Grid.Column="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="170" />
+                    <ColumnDefinition Width="18" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Section nav rail -->
+                <StackPanel Grid.Column="0">
+                    <RadioButton x:Name="SecReceipt" Style="{StaticResource SectionNavItem}"
+                                 IsChecked="True" Click="SectionNav_Click"
+                                 Tag="ReceiptSection">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="18" Height="18" CornerRadius="4"
+                                    Background="{StaticResource BrandSoftSurfaceBrush}"
+                                    Margin="0,0,10,0">
+                                <TextBlock Text="1" FontSize="10" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{StaticResource BrandSubtleTextBrush}" />
+                            </Border>
+                            <TextBlock Text="Receipt header" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="SecPrinter" Style="{StaticResource SectionNavItem}"
+                                 Click="SectionNav_Click" Tag="PrinterSection">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="18" Height="18" CornerRadius="4"
+                                    Background="{StaticResource BrandSoftSurfaceBrush}"
+                                    Margin="0,0,10,0">
+                                <TextBlock Text="2" FontSize="10" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{StaticResource BrandSubtleTextBrush}" />
+                            </Border>
+                            <TextBlock Text="Printer" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="SecOrder" Style="{StaticResource SectionNavItem}"
+                                 Click="SectionNav_Click" Tag="OrderSection">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="18" Height="18" CornerRadius="4"
+                                    Background="{StaticResource BrandSoftSurfaceBrush}"
+                                    Margin="0,0,10,0">
+                                <TextBlock Text="3" FontSize="10" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{StaticResource BrandSubtleTextBrush}" />
+                            </Border>
+                            <TextBlock Text="Order placement" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="SecInventory" Style="{StaticResource SectionNavItem}"
+                                 Click="SectionNav_Click" Tag="InventorySection">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="18" Height="18" CornerRadius="4"
+                                    Background="{StaticResource BrandSoftSurfaceBrush}"
+                                    Margin="0,0,10,0">
+                                <TextBlock Text="4" FontSize="10" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{StaticResource BrandSubtleTextBrush}" />
+                            </Border>
+                            <TextBlock Text="Inventory display" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+                </StackPanel>
+
+                <!-- Form stack -->
+                <ScrollViewer Grid.Column="2" x:Name="FormScroll" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="FormStack">
+
+                        <!-- Receipt header -->
+                        <Border x:Name="ReceiptSection" Style="{StaticResource Card}" Padding="0" Margin="0,0,0,14">
+                            <StackPanel>
+                                <Border BorderBrush="#FFF1F5F9" BorderThickness="0,0,0,1" Padding="18,14">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Style="{StaticResource CardHeadIconBox}">
+                                            <TextBlock Style="{StaticResource CardHeadIconText}" Text="" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource CardHeadTitle}" Text="Receipt header" />
+                                            <TextBlock Style="{StaticResource CardHeadSub}"
+                                                       Text="Printed at the top of every receipt &amp; reprint" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <StackPanel Margin="18,16,18,16">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Shop name" />
+                                    <TextBox x:Name="ShopNameBox" Padding="10,8"
+                                             TextChanged="FormField_Changed" />
+
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Tag line / cuisine (optional)"
+                                               Margin="0,14,0,5" />
+                                    <TextBox x:Name="ShopLine2Box" Padding="10,8"
+                                             TextChanged="FormField_Changed" />
+
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Phone / address (optional)"
+                                               Margin="0,14,0,5" />
+                                    <TextBox x:Name="ShopAddressBox" Padding="10,8"
+                                             TextChanged="FormField_Changed" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Printer -->
+                        <Border x:Name="PrinterSection" Style="{StaticResource Card}" Padding="0" Margin="0,0,0,14">
+                            <StackPanel>
+                                <Border BorderBrush="#FFF1F5F9" BorderThickness="0,0,0,1" Padding="18,14">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Style="{StaticResource CardHeadIconBox}">
+                                            <TextBlock Style="{StaticResource CardHeadIconText}" Text="" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource CardHeadTitle}" Text="Printer" />
+                                            <TextBlock Style="{StaticResource CardHeadSub}"
+                                                       Text="Receipts go to this printer when you press Place &amp; Print" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <StackPanel Margin="18,16,18,16">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Default printer" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="PrinterCombo" SelectionChanged="FormField_Changed" />
+                                        <Button Grid.Column="1" Style="{StaticResource GhostButton}"
+                                                Margin="8,0,0,0" Click="TestPrint_Click">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Style="{StaticResource IconGlyphSmall}" Text=""
+                                                           Margin="0,0,6,0"
+                                                           Foreground="{StaticResource BrandSubtleTextBrush}" />
+                                                <TextBlock Text="Test print" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                    <TextBlock x:Name="PrinterHint" Style="{StaticResource FieldHint}" />
+
+                                    <CheckBox x:Name="CompactBox" Style="{StaticResource CheckRow}"
+                                              Margin="0,12,0,0"
+                                              Checked="FormField_Changed"
+                                              Unchecked="FormField_Changed">
+                                        <StackPanel>
+                                            <TextBlock Text="Compact receipt" FontSize="14" FontWeight="Medium"
+                                                       Foreground="{StaticResource BrandTextBrush}" />
+                                            <TextBlock Text="Saves paper &amp; ink — drops separator lines and tightens line spacing"
+                                                       FontSize="11" Margin="0,2,0,0"
+                                                       Foreground="{StaticResource BrandSubtleTextBrush}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Order placement -->
+                        <Border x:Name="OrderSection" Style="{StaticResource Card}" Padding="0" Margin="0,0,0,14">
+                            <StackPanel>
+                                <Border BorderBrush="#FFF1F5F9" BorderThickness="0,0,0,1" Padding="18,14">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Style="{StaticResource CardHeadIconBox}">
+                                            <TextBlock Style="{StaticResource CardHeadIconText}" Text="" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource CardHeadTitle}" Text="Order placement" />
+                                            <TextBlock Style="{StaticResource CardHeadSub}"
+                                                       Text="What happens when you press Place &amp; Print in Take Order" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <StackPanel Margin="8,12,8,12">
+                                    <CheckBox x:Name="PrintAfterPlaceBox" Style="{StaticResource CheckRow}"
+                                              Checked="FormField_Changed"
+                                              Unchecked="FormField_Changed">
+                                        <StackPanel>
+                                            <TextBlock Text="Print receipt after placing order"
+                                                       FontSize="14" FontWeight="Medium"
+                                                       Foreground="{StaticResource BrandTextBrush}" />
+                                            <TextBlock Text="Off = order is recorded but no paper goes out — useful for take-away by phone"
+                                                       FontSize="11" Margin="0,2,0,0"
+                                                       Foreground="{StaticResource BrandSubtleTextBrush}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                    <CheckBox x:Name="AutoPrintBox" Style="{StaticResource CheckRow}"
+                                              Checked="FormField_Changed"
+                                              Unchecked="FormField_Changed">
+                                        <StackPanel>
+                                            <TextBlock Text="Send to printer silently"
+                                                       FontSize="14" FontWeight="Medium"
+                                                       Foreground="{StaticResource BrandTextBrush}" />
+                                            <TextBlock Text="Skip the preview / printer-pick dialog — fastest path during the lunch rush"
+                                                       FontSize="11" Margin="0,2,0,0"
+                                                       Foreground="{StaticResource BrandSubtleTextBrush}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                    <CheckBox x:Name="RoundToRupeeBox" Style="{StaticResource CheckRow}"
+                                              Checked="FormField_Changed"
+                                              Unchecked="FormField_Changed">
+                                        <StackPanel>
+                                            <TextBlock Text="Round Total to nearest rupee"
+                                                       FontSize="14" FontWeight="Medium"
+                                                       Foreground="{StaticResource BrandTextBrush}" />
+                                            <TextBlock Text="The receipt shows a Rounding line for the +/− paise delta"
+                                                       FontSize="11" Margin="0,2,0,0"
+                                                       Foreground="{StaticResource BrandSubtleTextBrush}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                    <CheckBox x:Name="EnableDiscountBox" Style="{StaticResource CheckRow}"
+                                              Checked="FormField_Changed"
+                                              Unchecked="FormField_Changed">
+                                        <StackPanel>
+                                            <TextBlock Text="Show Discount field on the cart"
+                                                       FontSize="14" FontWeight="Medium"
+                                                       Foreground="{StaticResource BrandTextBrush}" />
+                                            <TextBlock Text="Lets the cashier subtract a flat amount before calculating the total"
+                                                       FontSize="11" Margin="0,2,0,0"
+                                                       Foreground="{StaticResource BrandSubtleTextBrush}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                    <StackPanel Margin="10,10,10,0">
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="Tax / GST percent" />
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBox x:Name="TaxPercentBox" Width="90"
+                                                     Padding="10,8"
+                                                     HorizontalContentAlignment="Right"
+                                                     PreviewTextInput="DecimalOnly_PreviewTextInput"
+                                                     TextChanged="FormField_Changed" />
+                                            <TextBlock Text="%"
+                                                       VerticalAlignment="Center" Margin="10,0,0,0"
+                                                       FontSize="12"
+                                                       Foreground="{StaticResource BrandSubtleTextBrush}" />
+                                        </StackPanel>
+                                        <TextBlock Style="{StaticResource FieldHint}"
+                                                   Text="Set to 0 to hide the Tax line from receipts" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Inventory display -->
+                        <Border x:Name="InventorySection" Style="{StaticResource Card}" Padding="0" Margin="0,0,0,14">
+                            <StackPanel>
+                                <Border BorderBrush="#FFF1F5F9" BorderThickness="0,0,0,1" Padding="18,14">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Style="{StaticResource CardHeadIconBox}">
+                                            <TextBlock Style="{StaticResource CardHeadIconText}" Text="" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource CardHeadTitle}" Text="Inventory display" />
+                                            <TextBlock Style="{StaticResource CardHeadSub}"
+                                                       Text="Cosmetic flags for the Take Order tile grid" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <StackPanel Margin="8,12,8,16">
+                                    <CheckBox x:Name="ShowLowStockBox" Style="{StaticResource CheckRow}"
+                                              Checked="FormField_Changed"
+                                              Unchecked="FormField_Changed">
+                                        <StackPanel>
+                                            <TextBlock Text="Show qty badge on item cards when stock is low"
+                                                       FontSize="14" FontWeight="Medium"
+                                                       Foreground="{StaticResource BrandTextBrush}" />
+                                            <TextBlock Text="Helps the cashier flag the kitchen before something runs out mid-order"
+                                                       FontSize="11" Margin="0,2,0,0"
+                                                       Foreground="{StaticResource BrandSubtleTextBrush}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </CheckBox>
+
+                                    <StackPanel Margin="10,10,10,0">
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="Low-stock threshold" />
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBox x:Name="LowStockThresholdBox" Width="90"
+                                                     Padding="10,8"
+                                                     HorizontalContentAlignment="Right"
+                                                     PreviewTextInput="IntOnly_PreviewTextInput"
+                                                     TextChanged="FormField_Changed" />
+                                            <TextBlock Text="items remaining"
+                                                       VerticalAlignment="Center" Margin="10,0,0,0"
+                                                       FontSize="12"
+                                                       Foreground="{StaticResource BrandSubtleTextBrush}" />
+                                        </StackPanel>
+                                        <TextBlock Style="{StaticResource FieldHint}"
+                                                   Text="Show qty badge when remaining stock falls below this number" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- Receipt preview pane -->
+            <StackPanel Grid.Column="2">
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="RECEIPT PREVIEW" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{StaticResource BrandSubtleTextBrush}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse Width="6" Height="6" Fill="{StaticResource BrandSuccessBrush}"
+                                 VerticalAlignment="Center" Margin="0,0,5,0" />
+                        <TextBlock Text="LIVE" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{StaticResource BrandSuccessBrush}" />
+                    </StackPanel>
+                </Grid>
+
+                <Border CornerRadius="10" Padding="22" MinHeight="380">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#FF1F2937" Offset="0" />
+                            <GradientStop Color="#FF0F172A" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border Width="280" Background="#FFFBFAF7"
+                            HorizontalAlignment="Center" VerticalAlignment="Top"
+                            Padding="16,18">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#FF000000" Opacity="0.4"
+                                              BlurRadius="24" ShadowDepth="8" Direction="270" />
+                        </Border.Effect>
+                        <StackPanel TextElement.FontFamily="Cascadia Mono, Consolas"
+                                    TextElement.FontSize="11"
+                                    TextElement.Foreground="#FF1F2937">
+                            <TextBlock x:Name="RcShopName" Text="ARAYA VYSYA SSV"
+                                       FontWeight="Bold" FontSize="13"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock x:Name="RcLine2" Text="Pure-Veg Tiffin · South Indian"
+                                       FontSize="10" Foreground="#FF475569"
+                                       HorizontalAlignment="Center" Margin="0,2,0,0" />
+                            <TextBlock x:Name="RcAddress" Text="2-14 Main Bazaar"
+                                       FontSize="10" Foreground="#FF475569"
+                                       HorizontalAlignment="Center" Margin="0,1,0,0" />
+
+                            <Border Margin="0,8" BorderBrush="#FF94A3B8" BorderThickness="0,0,0,1" />
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="#1042" FontSize="10" Foreground="#FF475569" />
+                                <TextBlock Grid.Column="1" Text="21 May · 11:38 AM"
+                                           FontSize="10" Foreground="#FF475569" />
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Sundar A." FontSize="10" Foreground="#FF475569" />
+                                <TextBlock Grid.Column="1" Text="Cash"
+                                           FontSize="10" Foreground="#FF475569" />
+                            </Grid>
+
+                            <Border Margin="0,8" BorderBrush="#FF94A3B8" BorderThickness="0,0,0,1" />
+
+                            <!-- Sample line items -->
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Masala Dosa" />
+                                    <TextBlock Text="2 × ₹70.00" FontSize="10" Foreground="#FF475569" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="140.00" VerticalAlignment="Center" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Idly (2 pcs)" />
+                                    <TextBlock Text="3 × ₹40.00" FontSize="10" Foreground="#FF475569" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="120.00" VerticalAlignment="Center" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Filter Coffee" />
+                                    <TextBlock Text="2 × ₹25.00" FontSize="10" Foreground="#FF475569" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="50.00" VerticalAlignment="Center" />
+                            </Grid>
+
+                            <Border Margin="0,8" BorderBrush="#FF94A3B8" BorderThickness="0,0,0,1" />
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Items" FontSize="10" Foreground="#FF475569" />
+                                <TextBlock Grid.Column="1" Text="7" FontSize="10" Foreground="#FF475569" />
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Subtotal" FontSize="10" Foreground="#FF475569" />
+                                <TextBlock Grid.Column="1" Text="310.00" FontSize="10" Foreground="#FF475569" />
+                            </Grid>
+
+                            <Border Margin="0,8" BorderBrush="#FF94A3B8" BorderThickness="0,0,0,1" />
+
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="TOTAL" FontWeight="Bold" FontSize="13" />
+                                <TextBlock Grid.Column="1" Text="₹ 310.00" FontWeight="Bold" FontSize="13" />
+                            </Grid>
+
+                            <TextBlock Text="— thank you, please visit again —"
+                                       FontSize="10" Foreground="#FF475569"
+                                       HorizontalAlignment="Center" Margin="0,10,0,0" />
+                        </StackPanel>
+                    </Border>
+                </Border>
+            </StackPanel>
+        </Grid>
+
+        <!-- Save bar (full width) -->
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="18,12" Margin="0,14,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Ellipse x:Name="StatusDot" Width="6" Height="6"
+                             Fill="{StaticResource BrandSuccessBrush}"
+                             VerticalAlignment="Center" Margin="0,0,7,0" />
+                    <TextBlock x:Name="StatusText" Text="All changes saved"
+                               FontSize="12" Foreground="{StaticResource BrandSubtleTextBrush}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="DiscardButton" Style="{StaticResource GhostButton}"
+                            Padding="14,8" Margin="0,0,8,0"
+                            Click="Discard_Click" Content="Discard" />
+                    <Button Style="{StaticResource PrimaryButton}" Padding="20,8"
+                            Click="Save_Click" Content="Save changes" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -26,16 +26,29 @@
                 <TextBlock Text="Tap items to add to the cart" Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
             </StackPanel>
 
-            <Grid Grid.Row="1" Margin="0,18,0,12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name="SearchBox"
-                         ui:ControlHelper.PlaceholderText="Search menu..."
-                         FontSize="14"
-                         Padding="12,8"
-                         TextChanged="SearchBox_TextChanged" />
-            </Grid>
+            <!-- Search with inline magnifier glyph -->
+            <Border Grid.Row="1" Margin="0,18,0,12"
+                    Background="White"
+                    BorderBrush="{StaticResource BrandBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="12,4">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Style="{StaticResource IconGlyph}" Text=""
+                               FontSize="14"
+                               Foreground="{StaticResource BrandSubtleTextBrush}"
+                               Margin="2,0,8,0" />
+                    <TextBox Grid.Column="1" x:Name="SearchBox"
+                             Background="Transparent" BorderThickness="0"
+                             ui:ControlHelper.PlaceholderText="Search menu..."
+                             FontSize="14" Padding="0,7"
+                             TextChanged="SearchBox_TextChanged" />
+                </Grid>
+            </Border>
 
             <ItemsControl Grid.Row="2" x:Name="CategoryTabs" Margin="0,0,0,8">
                 <ItemsControl.ItemsPanel>
@@ -45,11 +58,12 @@
                 </ItemsControl.ItemsPanel>
             </ItemsControl>
 
-            <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
                 <ItemsControl x:Name="MenuList">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal" />
+                            <UniformGrid Columns="4" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
@@ -68,7 +82,7 @@
                 </Grid.RowDefinitions>
 
                 <Border Grid.Row="0" Padding="22,22,22,16"
-                        Background="{StaticResource BrandHeaderBrush}">
+                        Background="{StaticResource BrandCartHeaderBrush}">
                     <StackPanel>
                         <TextBlock Text="Current Order" Foreground="White"
                                    FontSize="20" FontWeight="SemiBold" />
@@ -99,15 +113,61 @@
                             <TextBlock Grid.Column="1" x:Name="ItemCountText" Text="0"
                                        Foreground="{StaticResource BrandTextBrush}" FontWeight="SemiBold" />
                         </Grid>
-                        <Grid Margin="0,4,0,12">
+                        <Grid Margin="0,4,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Subtotal" Foreground="{StaticResource BrandSubtleTextBrush}" />
+                            <TextBlock Grid.Column="1" x:Name="SubtotalText" Text="₹ 0.00"
+                                       Foreground="{StaticResource BrandTextBrush}" FontWeight="SemiBold" />
+                        </Grid>
+                        <Grid x:Name="TaxRow" Margin="0,2,0,2" Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="TaxLabelText" Text="Tax"
+                                       Foreground="{StaticResource BrandSubtleTextBrush}" />
+                            <TextBlock Grid.Column="1" x:Name="TaxAmountText" Text="₹ 0.00"
+                                       Foreground="{StaticResource BrandTextBrush}" />
+                        </Grid>
+                        <Grid x:Name="DiscountRow" Margin="0,2,0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Discount" Foreground="{StaticResource BrandSubtleTextBrush}"
+                                       VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="₹" Foreground="{StaticResource BrandSubtleTextBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,4,0" />
+                                <TextBox x:Name="DiscountBox" Width="68" Padding="6,2"
+                                         HorizontalContentAlignment="Right"
+                                         FontSize="13"
+                                         Text="0"
+                                         TextChanged="Discount_Changed" />
+                            </StackPanel>
+                        </Grid>
+                        <Grid x:Name="RoundingRow" Margin="0,2,0,2" Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Rounding" Foreground="{StaticResource BrandSubtleTextBrush}" />
+                            <TextBlock Grid.Column="1" x:Name="RoundingAmountText" Text="₹ 0.00"
+                                       Foreground="{StaticResource BrandTextBrush}" />
+                        </Grid>
+                        <Grid Margin="0,8,0,14">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Total" FontWeight="SemiBold" FontSize="16"
+                                       VerticalAlignment="Center"
                                        Foreground="{StaticResource BrandTextBrush}" />
                             <TextBlock Grid.Column="1" x:Name="TotalText"
-                                       FontWeight="Bold" FontSize="22"
+                                       FontWeight="Bold" FontSize="24"
                                        Foreground="{StaticResource BrandPrimaryBrush}"
                                        Text="₹ 0.00" />
                         </Grid>
@@ -116,18 +176,18 @@
                                  ui:ControlHelper.PlaceholderText="Customer name (optional)"
                                  Margin="0,0,0,8" />
 
-                        <Grid Margin="0,0,0,12">
+                        <Grid Margin="0,0,0,14">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition />
                                 <ColumnDefinition />
                                 <ColumnDefinition />
                             </Grid.ColumnDefinitions>
-                            <RadioButton x:Name="PayCash" GroupName="Pay" Grid.Column="0" Content="Cash" IsChecked="True"
-                                         Foreground="{StaticResource BrandTextBrush}" />
-                            <RadioButton x:Name="PayUpi"  GroupName="Pay" Grid.Column="1" Content="UPI"
-                                         Foreground="{StaticResource BrandTextBrush}" />
-                            <RadioButton x:Name="PayCard" GroupName="Pay" Grid.Column="2" Content="Card"
-                                         Foreground="{StaticResource BrandTextBrush}" />
+                            <RadioButton x:Name="PayCash" Style="{StaticResource PaymentPill}"
+                                         GroupName="Pay" Grid.Column="0" Content="Cash" IsChecked="True" />
+                            <RadioButton x:Name="PayUpi"  Style="{StaticResource PaymentPill}"
+                                         GroupName="Pay" Grid.Column="1" Content="UPI" />
+                            <RadioButton x:Name="PayCard" Style="{StaticResource PaymentPill}"
+                                         GroupName="Pay" Grid.Column="2" Content="Card" Margin="0" />
                         </Grid>
 
                         <Grid>
@@ -139,7 +199,7 @@
                             <Button Grid.Column="0" Content="Clear"
                                     Style="{StaticResource GhostButton}"
                                     Click="Clear_Click" />
-                            <Button Grid.Column="2" Content="Place &amp; Print"
+                            <Button x:Name="PlaceButton" Grid.Column="2" Content="Place &amp; Print"
                                     Style="{StaticResource PrimaryButton}"
                                     Click="PlaceAndPrint_Click" />
                         </Grid>

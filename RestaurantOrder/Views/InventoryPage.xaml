@@ -6,95 +6,395 @@
              xmlns:ui="http://schemas.modernwpf.com/2019"
              mc:Ignorable="d"
              Background="{StaticResource BrandSurfaceBrush}">
+
+    <UserControl.Resources>
+        <!-- Column widths shared between thead and row template -->
+        <GridLength x:Key="ColSwatch">34</GridLength>
+        <GridLength x:Key="ColCategory">140</GridLength>
+        <GridLength x:Key="ColPrice">110</GridLength>
+        <GridLength x:Key="ColStock">200</GridLength>
+        <GridLength x:Key="ColActive">80</GridLength>
+        <GridLength x:Key="ColActions">100</GridLength>
+
+        <Style x:Key="THeaderText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource BrandSubtleTextDarkBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Resources>
+
     <Grid Margin="28,24">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <WrapPanel Grid.Row="0" Orientation="Horizontal">
-            <StackPanel MinWidth="200" Margin="0,0,24,8" VerticalAlignment="Center">
+        <!-- Page head -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
                 <TextBlock Text="Inventory" Style="{StaticResource PageTitle}" />
-                <TextBlock Text="Manage your menu items, prices, and availability"
-                           Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
+                <TextBlock x:Name="PageSubtitleText" Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
             </StackPanel>
-            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
-                <Button Content="Download Sample Excel"
-                        Style="{StaticResource GhostButton}" Margin="0,0,8,8"
-                        Click="DownloadSample_Click" />
-                <Button Content="Import from Excel"
-                        Style="{StaticResource GhostButton}" Margin="0,0,8,8"
-                        Click="ImportExcel_Click" />
-                <Button Content="+ Add Item"
-                        Style="{StaticResource PrimaryButton}" Margin="0,0,0,8"
-                        Click="AddItem_Click" />
+            <WrapPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                <Button Style="{StaticResource GhostButton}" Margin="0,0,8,0" Click="ResetDailyStock_Click"
+                        ToolTip="Reset Available qty back to Estimated qty for tracked items">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource IconGlyphSmall}" Text="" Margin="0,0,6,0"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}" />
+                        <TextBlock Text="Reset Daily Stock" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource GhostButton}" Margin="0,0,8,0" Click="DownloadSample_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource IconGlyphSmall}" Text="" Margin="0,0,6,0"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}" />
+                        <TextBlock Text="Sample Excel" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource GhostButton}" Margin="0,0,8,0" Click="ImportExcel_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource IconGlyphSmall}" Text="" Margin="0,0,6,0"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}" />
+                        <TextBlock Text="Import Excel" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource PrimaryButton}" Click="AddItem_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource IconGlyphSmall}" Text="" Margin="0,0,6,0"
+                                   Foreground="White" />
+                        <TextBlock Text="Add Item" />
+                    </StackPanel>
+                </Button>
             </WrapPanel>
-        </WrapPanel>
+        </Grid>
 
-        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,18,0,12">
+        <!-- KPI strip -->
+        <Grid Grid.Row="1" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource KpiIconChip}"
+                                Background="{StaticResource SuccessBgBrush}">
+                            <TextBlock Style="{StaticResource IconGlyphSmall}" Text=""
+                                       Foreground="{StaticResource SuccessFgBrush}" />
+                        </Border>
+                        <TextBlock Text="AVAILABLE" Style="{StaticResource KpiLabel}"
+                                   FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock x:Name="KpiAvailableValue" Style="{StaticResource KpiValue}"
+                               FontSize="24" Margin="0,8,0,0" />
+                    <TextBlock x:Name="KpiAvailableSub" FontSize="11"
+                               Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,2,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource KpiIconChip}"
+                                Background="{StaticResource WarnBgBrush}">
+                            <TextBlock Style="{StaticResource IconGlyphSmall}" Text=""
+                                       Foreground="{StaticResource WarnFgBrush}" />
+                        </Border>
+                        <TextBlock Text="LOW STOCK" Style="{StaticResource KpiLabel}"
+                                   FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock x:Name="KpiLowValue" Style="{StaticResource KpiValue}"
+                               FontSize="24" Margin="0,8,0,0"
+                               Foreground="{StaticResource WarnFgBrush}" />
+                    <TextBlock x:Name="KpiLowSub" FontSize="11"
+                               Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,2,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="4" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource KpiIconChip}"
+                                Background="{StaticResource DangerBgBrush}">
+                            <TextBlock Style="{StaticResource IconGlyphSmall}" Text=""
+                                       Foreground="{StaticResource DangerFgBrush}" />
+                        </Border>
+                        <TextBlock Text="OUT OF STOCK" Style="{StaticResource KpiLabel}"
+                                   FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock x:Name="KpiOutValue" Style="{StaticResource KpiValue}"
+                               FontSize="24" Margin="0,8,0,0"
+                               Foreground="{StaticResource DangerFgBrush}" />
+                    <TextBlock Text="hidden from Take Order" FontSize="11"
+                               Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,2,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="6" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource KpiIconChip}"
+                                Background="{StaticResource InfoBgBrush}">
+                            <TextBlock Text="₹" FontSize="12" FontWeight="Bold"
+                                       Foreground="{StaticResource InfoFgBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="INVENTORY VALUE" Style="{StaticResource KpiLabel}"
+                                   FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock x:Name="KpiValueValue" Style="{StaticResource KpiValue}"
+                               FontSize="24" Margin="0,8,0,0" />
+                    <TextBlock Text="at current available qty" FontSize="11"
+                               Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,2,0,0" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Filter rail -->
+        <Border Grid.Row="2" Style="{StaticResource FilterRailCard}" Margin="0,14,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" MinWidth="200" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBox x:Name="SearchBox"
-                         ui:ControlHelper.PlaceholderText="Search items..."
-                         FontSize="13"
-                         TextChanged="SearchBox_TextChanged" />
-                <TextBlock Grid.Column="1" x:Name="CountText" VerticalAlignment="Center"
-                           Margin="16,0,0,0" Foreground="{StaticResource BrandSubtleTextBrush}" />
+
+                <!-- Search pill -->
+                <Border Grid.Column="0" Background="{StaticResource BrandSoftSurfaceBrush}"
+                        CornerRadius="6" Padding="10,4">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Style="{StaticResource IconGlyph}" Text=""
+                                   FontSize="13"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}"
+                                   Margin="2,0,8,0" />
+                        <TextBox Grid.Column="1" x:Name="SearchBox"
+                                 Background="Transparent" BorderThickness="0"
+                                 ui:ControlHelper.PlaceholderText="Search by name or category…"
+                                 FontSize="14" VerticalContentAlignment="Center"
+                                 TextChanged="SearchBox_TextChanged" />
+                    </Grid>
+                </Border>
+
+                <!-- vsep -->
+                <Border Grid.Column="1" Width="1" Height="22" Margin="10,0"
+                        Background="{StaticResource BrandBorderBrush}" />
+
+                <!-- Category chips -->
+                <ItemsControl Grid.Column="2" x:Name="CategoryChips">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+
+                <!-- vsep -->
+                <Border Grid.Column="3" Width="1" Height="22" Margin="10,0"
+                        Background="{StaticResource BrandBorderBrush}" />
+
+                <!-- Status chips -->
+                <StackPanel Grid.Column="4" Orientation="Horizontal">
+                    <ToggleButton x:Name="LowChip" Style="{StaticResource FilterChip}"
+                                  Content="Low" Click="StatusChip_Click" />
+                    <ToggleButton x:Name="OutChip" Style="{StaticResource FilterChip}"
+                                  Content="Out" Click="StatusChip_Click" Margin="4,0,0,0" />
+                </StackPanel>
             </Grid>
         </Border>
 
-        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="0">
-            <DataGrid x:Name="ItemsGrid"
-                      AutoGenerateColumns="False"
-                      CanUserAddRows="False"
-                      CanUserDeleteRows="False"
-                      BorderThickness="0"
-                      Background="Transparent"
-                      MouseDoubleClick="ItemsGrid_MouseDoubleClick"
-                      CellEditEnding="ItemsGrid_CellEditEnding">
-                <DataGrid.Resources>
-                    <Style x:Key="RightAlignedCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
-                        <Setter Property="HorizontalContentAlignment" Value="Right" />
-                    </Style>
-                    <Style x:Key="CenterAlignedCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
-                        <Setter Property="HorizontalContentAlignment" Value="Center" />
-                    </Style>
-                    <Style x:Key="ActionCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
-                        <Setter Property="Padding" Value="0" />
-                        <Setter Property="HorizontalContentAlignment" Value="Center" />
-                    </Style>
-                </DataGrid.Resources>
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
-                    <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="180" />
-                    <DataGridTextColumn Header="Price (₹)"
-                                        Binding="{Binding Price, StringFormat=N2}"
-                                        CellStyle="{StaticResource RightAlignedCell}"
-                                        Width="120" />
-                    <DataGridCheckBoxColumn Header="Available"
-                                            Binding="{Binding IsAvailable}"
-                                            CellStyle="{StaticResource CenterAlignedCell}"
-                                            Width="100" />
-                    <DataGridTemplateColumn Header="" Width="100" CanUserSort="False" IsReadOnly="True"
-                                            CellStyle="{StaticResource ActionCell}">
-                        <DataGridTemplateColumn.CellTemplate>
+        <!-- Items table -->
+        <Border Grid.Row="3" Style="{StaticResource Card}" Padding="0" Margin="0,12,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="40" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- thead -->
+                <Border Grid.Row="0" Background="{StaticResource BrandSoftSurfaceAltBrush}"
+                        BorderBrush="{StaticResource BrandBorderBrush}"
+                        BorderThickness="0,0,0,1"
+                        CornerRadius="10,10,0,0">
+                    <Grid Margin="16,0,16,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="{StaticResource ColSwatch}" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="{StaticResource ColCategory}" />
+                            <ColumnDefinition Width="{StaticResource ColPrice}" />
+                            <ColumnDefinition Width="{StaticResource ColStock}" />
+                            <ColumnDefinition Width="{StaticResource ColActive}" />
+                            <ColumnDefinition Width="{StaticResource ColActions}" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="1" Style="{StaticResource THeaderText}" Text="ITEM" />
+                        <TextBlock Grid.Column="2" Style="{StaticResource THeaderText}" Text="CATEGORY" />
+                        <TextBlock Grid.Column="3" Style="{StaticResource THeaderText}" Text="PRICE"
+                                   HorizontalAlignment="Right" Margin="0,0,14,0" />
+                        <TextBlock Grid.Column="4" Style="{StaticResource THeaderText}"
+                                   Text="STOCK · AVAILABLE / ESTIMATED" />
+                        <TextBlock Grid.Column="5" Style="{StaticResource THeaderText}" Text="ACTIVE"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Grid.Column="6" Style="{StaticResource THeaderText}" Text="ACTIONS"
+                                   HorizontalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- tbody -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="RowsList">
+                        <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Button Content="Delete" Click="Delete_Click"
-                                        Tag="{Binding Id}"
-                                        Style="{StaticResource DangerButton}"
-                                        Padding="10,4"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center" />
+                                <Border Background="{Binding RowBackground}"
+                                        BorderBrush="#FFF1F5F9"
+                                        BorderThickness="0,0,0,1"
+                                        Opacity="{Binding RowOpacity}">
+                                    <Grid Margin="16,0,16,0" Height="60">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="{StaticResource ColSwatch}" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="{StaticResource ColCategory}" />
+                                            <ColumnDefinition Width="{StaticResource ColPrice}" />
+                                            <ColumnDefinition Width="{StaticResource ColStock}" />
+                                            <ColumnDefinition Width="{StaticResource ColActive}" />
+                                            <ColumnDefinition Width="{StaticResource ColActions}" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- swatch -->
+                                        <Border Grid.Column="0" Style="{StaticResource RowSwatch}"
+                                                Background="{Binding SwatchBg}">
+                                            <TextBlock Text="{Binding SwatchLetter}"
+                                                       Foreground="{Binding SwatchFg}"
+                                                       FontWeight="SemiBold" FontSize="14"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+
+                                        <!-- name + meta -->
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,8,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontWeight="SemiBold" FontSize="14"
+                                                           Foreground="{Binding NameForeground}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center" />
+                                                <Border Style="{StaticResource InlineStatusBadge}"
+                                                        Background="{StaticResource WarnBgBrush}"
+                                                        Visibility="{Binding LowBadgeVisibility}">
+                                                    <TextBlock Text="LOW" FontSize="10" FontWeight="SemiBold"
+                                                               Foreground="{StaticResource WarnFgBrush}" />
+                                                </Border>
+                                                <Border Style="{StaticResource InlineStatusBadge}"
+                                                        Background="{StaticResource DangerBgBrush}"
+                                                        Visibility="{Binding OutBadgeVisibility}">
+                                                    <TextBlock Text="OUT" FontSize="10" FontWeight="SemiBold"
+                                                               Foreground="{StaticResource DangerFgBrush}" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding MetaText}" FontSize="11"
+                                                       Foreground="{StaticResource BrandSubtleTextBrush}"
+                                                       Margin="0,1,0,0" />
+                                        </StackPanel>
+
+                                        <!-- category tag -->
+                                        <Border Grid.Column="2" Style="{StaticResource CategoryTagPill}">
+                                            <TextBlock Text="{Binding Category}" FontSize="11"
+                                                       FontWeight="Medium"
+                                                       Foreground="{StaticResource BrandSubtleTextDarkBrush}" />
+                                        </Border>
+
+                                        <!-- price -->
+                                        <TextBlock Grid.Column="3" Text="{Binding PriceText}"
+                                                   FontWeight="SemiBold" FontSize="14"
+                                                   Foreground="{StaticResource BrandTextBrush}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                   Margin="0,0,14,0" />
+
+                                        <!-- stock bar -->
+                                        <StackPanel Grid.Column="4" VerticalAlignment="Center" Margin="0,0,8,0">
+                                            <Grid Visibility="{Binding StockLineVisibility}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding AvailQtyText}"
+                                                           FontWeight="SemiBold" FontSize="12"
+                                                           Foreground="{Binding QtyForeground}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding EstQtyText}"
+                                                           FontSize="12"
+                                                           Foreground="{StaticResource BrandSubtleTextBrush}" />
+                                            </Grid>
+                                            <Border Style="{StaticResource StockBarTrack}"
+                                                    Margin="0,5,0,0"
+                                                    Visibility="{Binding StockLineVisibility}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="{Binding FillStar}" />
+                                                        <ColumnDefinition Width="{Binding RemainStar}" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0"
+                                                            Background="{Binding FillBrush}"
+                                                            CornerRadius="3"
+                                                            Opacity="{Binding FillOpacity}" />
+                                                </Grid>
+                                            </Border>
+                                            <TextBlock Text="Not tracked" FontSize="11"
+                                                       Foreground="{StaticResource BrandSubtleTextBrush}"
+                                                       Visibility="{Binding NotTrackedVisibility}" />
+                                        </StackPanel>
+
+                                        <!-- active switch -->
+                                        <CheckBox Grid.Column="5"
+                                                  Style="{StaticResource SwitchToggle}"
+                                                  IsChecked="{Binding IsAvailable, Mode=TwoWay}"
+                                                  Tag="{Binding Source}"
+                                                  Checked="Available_Changed"
+                                                  Unchecked="Available_Changed" />
+
+                                        <!-- actions -->
+                                        <StackPanel Grid.Column="6" Orientation="Horizontal"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Button Style="{StaticResource IconButton}"
+                                                    Tag="{Binding Id}"
+                                                    Click="Edit_Click" ToolTip="Edit item">
+                                                <TextBlock Style="{StaticResource IconGlyphSmall}" Text="" />
+                                            </Button>
+                                            <Button Style="{StaticResource IconDangerButton}"
+                                                    Tag="{Binding Id}"
+                                                    Click="Delete_Click" Margin="4,0,0,0" ToolTip="Delete item">
+                                                <TextBlock Style="{StaticResource IconGlyphSmall}" Text="" />
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
                             </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                </DataGrid.Columns>
-            </DataGrid>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- Empty state -->
+                <TextBlock Grid.Row="1" x:Name="EmptyState"
+                           Text="No items match the current filters."
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{StaticResource BrandSubtleTextBrush}"
+                           Visibility="Collapsed" />
+            </Grid>
         </Border>
     </Grid>
 </UserControl>
