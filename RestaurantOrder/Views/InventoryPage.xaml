@@ -22,6 +22,44 @@
             <Setter Property="Foreground" Value="{StaticResource BrandSubtleTextDarkBrush}" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
+
+        <!-- KPI card that doubles as a filter toggle. Card visuals stay
+             identical when off; turning on adds a cyan border + soft shadow
+             so the cashier sees which filter is active at a glance. -->
+        <Style x:Key="KpiCardToggle" TargetType="ToggleButton">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="14,12,14,14" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bd"
+                                Background="{StaticResource BrandCardBrush}"
+                                BorderBrush="{StaticResource BrandBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" Opacity="0.06" BlurRadius="12" ShadowDepth="2" Direction="270" />
+                            </Border.Effect>
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BrandPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BrandPrimaryBrush}" />
+                                <Setter TargetName="Bd" Property="BorderThickness" Value="2" />
+                                <Setter TargetName="Bd" Property="Background" Value="#FFECFEFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="28,24">
@@ -87,7 +125,10 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Style="{StaticResource KpiCard}">
+            <ToggleButton Grid.Column="0" x:Name="KpiAvailableToggle"
+                          Style="{StaticResource KpiCardToggle}"
+                          Click="KpiToggle_Click"
+                          ToolTip="Toggle to show only available items">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <Border Style="{StaticResource KpiIconChip}"
@@ -103,9 +144,12 @@
                     <TextBlock x:Name="KpiAvailableSub" FontSize="11"
                                Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,2,0,0" />
                 </StackPanel>
-            </Border>
+            </ToggleButton>
 
-            <Border Grid.Column="2" Style="{StaticResource KpiCard}">
+            <ToggleButton Grid.Column="2" x:Name="KpiLowToggle"
+                          Style="{StaticResource KpiCardToggle}"
+                          Click="KpiToggle_Click"
+                          ToolTip="Toggle to show only low-stock items">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <Border Style="{StaticResource KpiIconChip}"
@@ -122,9 +166,12 @@
                     <TextBlock x:Name="KpiLowSub" FontSize="11"
                                Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,2,0,0" />
                 </StackPanel>
-            </Border>
+            </ToggleButton>
 
-            <Border Grid.Column="4" Style="{StaticResource KpiCard}">
+            <ToggleButton Grid.Column="4" x:Name="KpiOutToggle"
+                          Style="{StaticResource KpiCardToggle}"
+                          Click="KpiToggle_Click"
+                          ToolTip="Toggle to show only out-of-stock items">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <Border Style="{StaticResource KpiIconChip}"
@@ -141,7 +188,7 @@
                     <TextBlock Text="hidden from Take Order" FontSize="11"
                                Foreground="{StaticResource BrandSubtleTextBrush}" Margin="0,2,0,0" />
                 </StackPanel>
-            </Border>
+            </ToggleButton>
 
             <Border Grid.Column="6" Style="{StaticResource KpiCard}">
                 <StackPanel>

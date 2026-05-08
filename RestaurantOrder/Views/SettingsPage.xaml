@@ -144,13 +144,12 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Page head -->
         <StackPanel Grid.Row="0">
             <TextBlock Text="Settings" Style="{StaticResource PageTitle}" />
-            <TextBlock Text="Receipt header, default printer, stock display and order placement"
+            <TextBlock Text="Changes save automatically as you make them"
                        Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
         </StackPanel>
 
@@ -615,29 +614,5 @@
             </StackPanel>
         </Grid>
 
-        <!-- Save bar (full width) -->
-        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="18,12" Margin="0,14,0,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Ellipse x:Name="StatusDot" Width="6" Height="6"
-                             Fill="{StaticResource BrandSuccessBrush}"
-                             VerticalAlignment="Center" Margin="0,0,7,0" />
-                    <TextBlock x:Name="StatusText" Text="All changes saved"
-                               FontSize="12" Foreground="{StaticResource BrandSubtleTextBrush}"
-                               VerticalAlignment="Center" />
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button x:Name="DiscardButton" Style="{StaticResource GhostButton}"
-                            Padding="14,8" Margin="0,0,8,0"
-                            Click="Discard_Click" Content="Discard" />
-                    <Button Style="{StaticResource PrimaryButton}" Padding="20,8"
-                            Click="Save_Click" Content="Save changes" />
-                </StackPanel>
-            </Grid>
-        </Border>
     </Grid>
 </UserControl>

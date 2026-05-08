@@ -36,11 +36,17 @@ public static class AnalyticsRepository
 {
     private const string Iso = "yyyy-MM-dd HH:mm:ss";
 
+    // Voided orders are excluded from every analytics query — they show in
+    // Order History tagged VOIDED but never count toward revenue, order count,
+    // avg ticket, top items, hourly buckets, or category breakdown.
+    private const string VoidFilter = "IsVoided = 0";
+
     public static (decimal revenue, int orderCount, decimal avgTicket) Summary(DateTime from, DateTime to)
     {
         using var conn = Database.Open();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT IFNULL(SUM(Total),0), COUNT(*) FROM Orders WHERE CreatedAt >= $f AND CreatedAt < $t";
+        cmd.CommandText = $@"SELECT IFNULL(SUM(Total),0), COUNT(*) FROM Orders
+                             WHERE CreatedAt >= $f AND CreatedAt < $t AND {VoidFilter}";
         cmd.Parameters.AddWithValue("$f", from.ToString(Iso, CultureInfo.InvariantCulture));
         cmd.Parameters.AddWithValue("$t", to.ToString(Iso, CultureInfo.InvariantCulture));
         using var rdr = cmd.ExecuteReader();
@@ -54,9 +60,9 @@ public static class AnalyticsRepository
     {
         using var conn = Database.Open();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT substr(CreatedAt,1,10) AS d, SUM(Total), COUNT(*)
-                            FROM Orders WHERE CreatedAt >= $f AND CreatedAt < $t
-                            GROUP BY d ORDER BY d";
+        cmd.CommandText = $@"SELECT substr(CreatedAt,1,10) AS d, SUM(Total), COUNT(*)
+                             FROM Orders WHERE CreatedAt >= $f AND CreatedAt < $t AND {VoidFilter}
+                             GROUP BY d ORDER BY d";
         cmd.Parameters.AddWithValue("$f", from.ToString(Iso, CultureInfo.InvariantCulture));
         cmd.Parameters.AddWithValue("$t", to.ToString(Iso, CultureInfo.InvariantCulture));
         using var rdr = cmd.ExecuteReader();
@@ -76,13 +82,13 @@ public static class AnalyticsRepository
     {
         using var conn = Database.Open();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT oi.MenuItemName, SUM(oi.Quantity), SUM(oi.UnitPrice * oi.Quantity)
-                            FROM OrderItems oi
-                            INNER JOIN Orders o ON o.Id = oi.OrderId
-                            WHERE o.CreatedAt >= $f AND o.CreatedAt < $t
-                            GROUP BY oi.MenuItemName
-                            ORDER BY SUM(oi.Quantity) DESC
-                            LIMIT $l";
+        cmd.CommandText = $@"SELECT oi.MenuItemName, SUM(oi.Quantity), SUM(oi.UnitPrice * oi.Quantity)
+                             FROM OrderItems oi
+                             INNER JOIN Orders o ON o.Id = oi.OrderId
+                             WHERE o.CreatedAt >= $f AND o.CreatedAt < $t AND o.{VoidFilter}
+                             GROUP BY oi.MenuItemName
+                             ORDER BY SUM(oi.Quantity) DESC
+                             LIMIT $l";
         cmd.Parameters.AddWithValue("$f", from.ToString(Iso, CultureInfo.InvariantCulture));
         cmd.Parameters.AddWithValue("$t", to.ToString(Iso, CultureInfo.InvariantCulture));
         cmd.Parameters.AddWithValue("$l", limit);
@@ -97,14 +103,14 @@ public static class AnalyticsRepository
     {
         using var conn = Database.Open();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT IFNULL(NULLIF(mi.Category,''),'(uncategorized)'),
-                                   SUM(oi.UnitPrice * oi.Quantity), SUM(oi.Quantity)
-                            FROM OrderItems oi
-                            INNER JOIN Orders o ON o.Id = oi.OrderId
-                            LEFT JOIN MenuItems mi ON mi.Id = oi.MenuItemId
-                            WHERE o.CreatedAt >= $f AND o.CreatedAt < $t
-                            GROUP BY 1
-                            ORDER BY 2 DESC";
+        cmd.CommandText = $@"SELECT IFNULL(NULLIF(mi.Category,''),'(uncategorized)'),
+                                    SUM(oi.UnitPrice * oi.Quantity), SUM(oi.Quantity)
+                             FROM OrderItems oi
+                             INNER JOIN Orders o ON o.Id = oi.OrderId
+                             LEFT JOIN MenuItems mi ON mi.Id = oi.MenuItemId
+                             WHERE o.CreatedAt >= $f AND o.CreatedAt < $t AND o.{VoidFilter}
+                             GROUP BY 1
+                             ORDER BY 2 DESC";
         cmd.Parameters.AddWithValue("$f", from.ToString(Iso, CultureInfo.InvariantCulture));
         cmd.Parameters.AddWithValue("$t", to.ToString(Iso, CultureInfo.InvariantCulture));
         using var rdr = cmd.ExecuteReader();
@@ -118,10 +124,10 @@ public static class AnalyticsRepository
     {
         using var conn = Database.Open();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT CAST(substr(CreatedAt, 12, 2) AS INTEGER) AS h,
-                                   COUNT(*), SUM(Total)
-                            FROM Orders WHERE CreatedAt >= $f AND CreatedAt < $t
-                            GROUP BY h ORDER BY h";
+        cmd.CommandText = $@"SELECT CAST(substr(CreatedAt, 12, 2) AS INTEGER) AS h,
+                                    COUNT(*), SUM(Total)
+                             FROM Orders WHERE CreatedAt >= $f AND CreatedAt < $t AND {VoidFilter}
+                             GROUP BY h ORDER BY h";
         cmd.Parameters.AddWithValue("$f", from.ToString(Iso, CultureInfo.InvariantCulture));
         cmd.Parameters.AddWithValue("$t", to.ToString(Iso, CultureInfo.InvariantCulture));
         using var rdr = cmd.ExecuteReader();

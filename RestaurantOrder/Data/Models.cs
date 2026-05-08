@@ -74,6 +74,7 @@ public class Order
     public string? CustomerName { get; set; }
     public string? Notes { get; set; }
     public bool IsVoided { get; set; }
+    public bool IsParcel { get; set; }
     public List<OrderItem> Items { get; set; } = new();
 
     // Populated by GetBetween via aggregate join — used for list rendering

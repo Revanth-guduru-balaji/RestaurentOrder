@@ -341,9 +341,9 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="FontWeight" Value="Medium" />
-        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Padding" Value="14,7" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Margin" Value="0,0,4,0" />
+        <Setter Property="Margin" Value="0,0,6,0" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
@@ -375,8 +375,8 @@
     <!-- Category tag (small inline pill in table cells) -->
     <Style x:Key="CategoryTagPill" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource BrandSoftSurfaceBrush}" />
-        <Setter Property="CornerRadius" Value="4" />
-        <Setter Property="Padding" Value="8,3" />
+        <Setter Property="CornerRadius" Value="9999" />
+        <Setter Property="Padding" Value="10,4" />
         <Setter Property="HorizontalAlignment" Value="Left" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
@@ -399,8 +399,8 @@
 
     <!-- Status badge inline in cells (LOW / OUT) -->
     <Style x:Key="InlineStatusBadge" TargetType="Border">
-        <Setter Property="CornerRadius" Value="3" />
-        <Setter Property="Padding" Value="6,2" />
+        <Setter Property="CornerRadius" Value="9999" />
+        <Setter Property="Padding" Value="8,2" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Margin" Value="8,0,0,0" />
     </Style>
@@ -507,8 +507,8 @@
 
     <!-- ======== Payment method chip (Cash/UPI/Card) ======== -->
     <Style x:Key="PaymentChip" TargetType="Border">
-        <Setter Property="CornerRadius" Value="4" />
-        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="CornerRadius" Value="9999" />
+        <Setter Property="Padding" Value="10,3" />
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="BorderThickness" Value="1" />
@@ -675,7 +675,7 @@
         </Setter>
     </Style>
 
-    <!-- Category filter chip on Take Order page (rounded rect) -->
+    <!-- Category filter chip on Take Order page (MUI pill) -->
     <Style x:Key="CategoryChip" TargetType="Button">
         <Setter Property="Background" Value="White" />
         <Setter Property="Foreground" Value="{StaticResource BrandTextBrush}" />
@@ -683,7 +683,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="FontWeight" Value="Medium" />
-        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Padding" Value="14,7" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
             <Setter.Value>
@@ -692,7 +692,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="6"
+                            CornerRadius="9999"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
                                           TextElement.Foreground="{TemplateBinding Foreground}"
@@ -759,6 +759,15 @@
     <!-- ============================================================
          Implicit styles — applied app-wide to fix contrast/visibility
          ============================================================ -->
+
+    <!-- Touch-friendly scrolling: every ScrollViewer in the app accepts
+         finger panning by default so the user can swipe up/down without
+         grabbing the scrollbar thumb (POS touchscreen ergonomics). -->
+    <Style TargetType="ScrollViewer">
+        <Setter Property="PanningMode" Value="VerticalFirst" />
+        <Setter Property="PanningDeceleration" Value="0.001" />
+        <Setter Property="PanningRatio" Value="1" />
+    </Style>
 
     <Style TargetType="DataGrid">
         <Setter Property="Background" Value="White" />

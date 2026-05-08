@@ -10,9 +10,17 @@ namespace RestaurantOrder.Services;
 
 public static class ReceiptPrinter
 {
+    // Sans-serif stack: Segoe UI ships with every Windows install, Roboto/Arial
+    // fall back if the user has them. A proportional sans-serif renders cleaner
+    // on 80mm thermal printers than monospace (Consolas was clipping).
+    private static readonly FontFamily ReceiptFont =
+        new FontFamily("Segoe UI, Roboto, Arial, sans-serif");
+
     /// Print using saved default printer. Prompts only if none saved or it's gone.
-    /// Returns true if the receipt was sent to a printer.
-    public static bool PrintQuiet(Order order)
+    /// Returns true if the customer bill was sent to a printer.
+    /// printKitchen=true fires a second kitchen ticket. Reprints / test prints
+    /// must pass false — the kitchen got their copy at order time.
+    public static bool PrintQuiet(Order order, bool printKitchen = false)
     {
         var s = AppSettings.Current;
         var dlg = new System.Windows.Controls.PrintDialog();
@@ -31,13 +39,28 @@ public static class ReceiptPrinter
         }
 
         if (queue == null) return false;
-        var doc = BuildDocument(order, dlg.PrintableAreaWidth, s.CompactReceipt);
+        var width = ResolveReceiptWidth(dlg.PrintableAreaWidth);
+        var doc = BuildDocument(order, width, s.CompactReceipt);
         dlg.PrintDocument(((IDocumentPaginatorSource)doc).DocumentPaginator, $"Order #{order.Id:D5}");
+
+        if (printKitchen)
+        {
+            // Kitchen ticket failure must not bubble up — the customer bill
+            // already printed and the order is saved. Worst case the kitchen
+            // ticket needs a manual reprint, but we don't want to confuse the
+            // cashier with a "print failed" toast on a successful customer print.
+            try
+            {
+                var kitchen = BuildKitchenTicket(order, width);
+                dlg.PrintDocument(((IDocumentPaginatorSource)kitchen).DocumentPaginator, $"Kitchen #{order.Id:D5}");
+            }
+            catch { }
+        }
         return true;
     }
 
     /// Always show the printer chooser (used for "change printer" or first-run flow).
-    public static bool PrintWithDialog(Order order)
+    public static bool PrintWithDialog(Order order, bool printKitchen = false)
     {
         var s = AppSettings.Current;
         var dlg = new System.Windows.Controls.PrintDialog();
@@ -46,13 +69,35 @@ public static class ReceiptPrinter
         s.DefaultPrinterName = dlg.PrintQueue?.FullName ?? s.DefaultPrinterName;
         try { s.Save(); } catch { }
 
-        var doc = BuildDocument(order, dlg.PrintableAreaWidth, s.CompactReceipt);
+        var width = ResolveReceiptWidth(dlg.PrintableAreaWidth);
+        var doc = BuildDocument(order, width, s.CompactReceipt);
         dlg.PrintDocument(((IDocumentPaginatorSource)doc).DocumentPaginator, $"Order #{order.Id:D5}");
+
+        if (printKitchen)
+        {
+            try
+            {
+                var kitchen = BuildKitchenTicket(order, width);
+                dlg.PrintDocument(((IDocumentPaginatorSource)kitchen).DocumentPaginator, $"Kitchen #{order.Id:D5}");
+            }
+            catch { }
+        }
         return true;
     }
 
     public static FlowDocument BuildPreview(Order order, double width = 320)
         => BuildDocument(order, width, AppSettings.Current.CompactReceipt);
+
+    // Thermal POS printers (80mm) usually have ~72mm printable width.
+    // Some drivers report a much wider PrintableAreaWidth (e.g., 595 for A4
+    // fallback) which causes layout to overflow paper and clip text. Cap at
+    // a sane thermal width so the receipt always fits on 80mm rolls.
+    private static double ResolveReceiptWidth(double reported)
+    {
+        const double thermalCap = 288; // ~72mm @ 96 DPI
+        if (reported <= 0) return thermalCap;
+        return Math.Min(reported, thermalCap);
+    }
 
     private static PrintQueue? TryFindSavedQueue(string name)
     {
@@ -87,24 +132,24 @@ public static class ReceiptPrinter
     private static FlowDocument BuildDocument(Order order, double pageWidth, bool compact)
     {
         var s = AppSettings.Current;
-        double bodySize = compact ? 9.5 : 11;
-        double headerSize = compact ? 13 : 17;
-        double subSize = compact ? 9 : 10.5;
-        double totalSize = compact ? 11 : 13;
-        double padX = compact ? 10 : 18;
-        double padY = compact ? 8 : 14;
+        double bodySize = compact ? 11 : 12;
+        double headerSize = compact ? 14 : 17;
+        double subSize = compact ? 10 : 11;
+        double totalSize = compact ? 13 : 15;
+        double padX = compact ? 6 : 12;
+        double padY = compact ? 6 : 12;
 
         var doc = new FlowDocument
         {
-            FontFamily = new FontFamily("Consolas"),
+            FontFamily = ReceiptFont,
             FontSize = bodySize,
             PagePadding = new Thickness(padX, padY, padX, padY),
             ColumnGap = 0,
             ColumnWidth = double.PositiveInfinity,
-            PageWidth = pageWidth > 0 ? pageWidth : 320,
+            PageWidth = pageWidth > 0 ? pageWidth : 288,
             TextAlignment = TextAlignment.Left,
             Foreground = Brushes.Black,
-            LineHeight = compact ? 13 : 16,
+            LineHeight = compact ? 14 : 17,
             LineStackingStrategy = LineStackingStrategy.BlockLineHeight
         };
 
@@ -127,6 +172,19 @@ public static class ReceiptPrinter
             header.Inlines.Add(new Run(s.ShopAddress) { FontSize = subSize - 0.5 });
         }
         if (header.Inlines.Count > 0) doc.Blocks.Add(header);
+
+        // Parcel banner — bold, centred, easy to spot when bagging
+        if (order.IsParcel)
+        {
+            var parcel = new Paragraph(new Run("*** PARCEL ***"))
+            {
+                TextAlignment = TextAlignment.Center,
+                FontWeight = FontWeights.Bold,
+                FontSize = totalSize,
+                Margin = new Thickness(0, 2, 0, 2)
+            };
+            doc.Blocks.Add(parcel);
+        }
 
         doc.Blocks.Add(MakeRule(compact));
 
@@ -155,7 +213,7 @@ public static class ReceiptPrinter
             Margin = new Thickness(0),
             FontSize = bodySize
         };
-        table.Columns.Add(new TableColumn { Width = new GridLength(2.6, GridUnitType.Star) });
+        table.Columns.Add(new TableColumn { Width = new GridLength(2.4, GridUnitType.Star) });
         table.Columns.Add(new TableColumn { Width = new GridLength(0.6, GridUnitType.Star) });
         table.Columns.Add(new TableColumn { Width = new GridLength(0.9, GridUnitType.Star) });
         table.Columns.Add(new TableColumn { Width = new GridLength(1.0, GridUnitType.Star) });
@@ -193,10 +251,10 @@ public static class ReceiptPrinter
         if (order.TaxAmount > 0m)
             AddTotalLine(doc, "Tax", Money.Format(order.TaxAmount), subSize, FontWeights.Normal);
         if (order.DiscountAmount > 0m)
-            AddTotalLine(doc, "Discount", "− " + Money.Format(order.DiscountAmount), subSize, FontWeights.Normal);
+            AddTotalLine(doc, "Discount", "- " + Money.Format(order.DiscountAmount), subSize, FontWeights.Normal);
         if (order.RoundingAmount != 0m)
             AddTotalLine(doc, "Rounding",
-                (order.RoundingAmount >= 0 ? "+ " : "− ") + Money.Format(Math.Abs(order.RoundingAmount)),
+                (order.RoundingAmount >= 0 ? "+ " : "- ") + Money.Format(Math.Abs(order.RoundingAmount)),
                 subSize, FontWeights.Normal);
 
         doc.Blocks.Add(MakeRule(compact));
@@ -216,28 +274,106 @@ public static class ReceiptPrinter
             doc.Blocks.Add(new Paragraph(new Run("Notes: " + order.Notes)) { FontSize = subSize, Margin = new Thickness(0, compact ? 2 : 4, 0, 0) });
         }
 
-        if (!compact)
+        doc.Blocks.Add(MakeRule(compact));
+        var footer = new Paragraph
+        {
+            TextAlignment = TextAlignment.Center,
+            FontSize = subSize,
+            Margin = new Thickness(0, 4, 0, 0)
+        };
+        footer.Inlines.Add(new Run("Thank you!"));
+        doc.Blocks.Add(footer);
+
+        return doc;
+    }
+
+    /// Kitchen ticket: order id + parcel banner + item names with quantity. No prices.
+    public static FlowDocument BuildKitchenTicket(Order order, double pageWidth)
+    {
+        double bodySize = 14;
+        double headerSize = 16;
+        double padX = 8;
+        double padY = 8;
+
+        var doc = new FlowDocument
+        {
+            FontFamily = ReceiptFont,
+            FontSize = bodySize,
+            PagePadding = new Thickness(padX, padY, padX, padY),
+            ColumnGap = 0,
+            ColumnWidth = double.PositiveInfinity,
+            PageWidth = pageWidth > 0 ? pageWidth : 288,
+            TextAlignment = TextAlignment.Left,
+            Foreground = Brushes.Black,
+            LineHeight = 18,
+            LineStackingStrategy = LineStackingStrategy.BlockLineHeight
+        };
+
+        var head = new Paragraph
+        {
+            TextAlignment = TextAlignment.Center,
+            FontWeight = FontWeights.Bold,
+            FontSize = headerSize,
+            Margin = new Thickness(0, 0, 0, 2)
+        };
+        head.Inlines.Add(new Run("KITCHEN"));
+        doc.Blocks.Add(head);
+
+        if (order.IsParcel)
+        {
+            var parcel = new Paragraph(new Run("*** PARCEL ***"))
+            {
+                TextAlignment = TextAlignment.Center,
+                FontWeight = FontWeights.Bold,
+                FontSize = headerSize,
+                Margin = new Thickness(0, 2, 0, 2)
+            };
+            doc.Blocks.Add(parcel);
+        }
+
+        var meta = new Paragraph
+        {
+            TextAlignment = TextAlignment.Center,
+            FontSize = bodySize,
+            Margin = new Thickness(0, 0, 0, 4)
+        };
+        meta.Inlines.Add(new Run($"#{order.Id:D5}") { FontWeight = FontWeights.Bold });
+        meta.Inlines.Add(new Run($"   {order.CreatedAt:HH:mm}"));
+        doc.Blocks.Add(meta);
+
+        doc.Blocks.Add(MakeRule(false));
+
+        // Items table: qty + name only.
+        var table = new Table
+        {
+            CellSpacing = 0,
+            Margin = new Thickness(0),
+            FontSize = bodySize
+        };
+        table.Columns.Add(new TableColumn { Width = new GridLength(0.5, GridUnitType.Star) });
+        table.Columns.Add(new TableColumn { Width = new GridLength(2.5, GridUnitType.Star) });
+
+        var rg = new TableRowGroup();
+        foreach (var it in order.Items)
+        {
+            var row = new TableRow();
+            var qtyCell = MakeCell(it.Quantity.ToString() + " ×", FontWeights.Bold, compact: false, alignment: TextAlignment.Right);
+            var nameCell = MakeCell(it.MenuItemName, FontWeights.SemiBold, compact: false);
+            row.Cells.Add(qtyCell);
+            row.Cells.Add(nameCell);
+            rg.Rows.Add(row);
+        }
+        table.RowGroups.Add(rg);
+        doc.Blocks.Add(table);
+
+        if (!string.IsNullOrWhiteSpace(order.Notes))
         {
             doc.Blocks.Add(MakeRule(false));
-            var footer = new Paragraph
+            doc.Blocks.Add(new Paragraph(new Run("Notes: " + order.Notes))
             {
-                TextAlignment = TextAlignment.Center,
-                FontSize = subSize,
+                FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(0, 4, 0, 0)
-            };
-            footer.Inlines.Add(new Run("Thank you!"));
-            doc.Blocks.Add(footer);
-        }
-        else
-        {
-            var footer = new Paragraph
-            {
-                TextAlignment = TextAlignment.Center,
-                FontSize = subSize,
-                Margin = new Thickness(0, 4, 0, 0)
-            };
-            footer.Inlines.Add(new Run("Thank you!"));
-            doc.Blocks.Add(footer);
+            });
         }
 
         return doc;
@@ -252,17 +388,8 @@ public static class ReceiptPrinter
             Margin = new Thickness(0)
         };
         p.Inlines.Add(new Run(label));
-        p.Inlines.Add(new Run("\t" + value) { });
-        // Use a Table-like trick: just right-align via a tab-spaced run isn't ideal in FlowDocument.
-        // Simplest reliable approach: render as a single paragraph with right-aligned value run.
-        p.Inlines.Clear();
-        p.Inlines.Add(new Run(label));
-        var space = new Run(value)
-        {
-            FontWeight = weight
-        };
-        p.Inlines.Add(new Run("    ")); // visual gap; the receipt is fixed width so this reads okay
-        p.Inlines.Add(space);
+        p.Inlines.Add(new Run("    "));
+        p.Inlines.Add(new Run(value) { FontWeight = weight });
         p.TextAlignment = TextAlignment.Right;
         doc.Blocks.Add(p);
     }

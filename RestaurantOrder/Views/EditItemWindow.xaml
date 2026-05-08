@@ -21,7 +21,8 @@
         <TextBox x:Name="NameBox" />
 
         <TextBlock Text="Category" Margin="0,12,0,4" />
-        <TextBox x:Name="CategoryBox" ui:ControlHelper.PlaceholderText="e.g. Breakfast, Lunch, Beverages" />
+        <ComboBox x:Name="CategoryBox" IsEditable="True"
+                  ui:ControlHelper.PlaceholderText="Pick or type a new category" />
 
         <TextBlock Text="Price (₹)" Margin="0,12,0,4" />
         <TextBox x:Name="PriceBox" />

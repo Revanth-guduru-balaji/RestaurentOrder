@@ -21,6 +21,7 @@ public partial class InventoryPage : UserControl
     private string _activeCategory = "All";
     private bool _filterLow;
     private bool _filterOut;
+    private bool _filterAvailable;
 
     public InventoryPage()
     {
@@ -128,7 +129,28 @@ public partial class InventoryPage : UserControl
     {
         _filterLow = LowChip.IsChecked == true;
         _filterOut = OutChip.IsChecked == true;
+        SyncKpiToggles();
         ApplyFilter();
+    }
+
+    // KPI cards double as filter toggles. Available / Low / Out are mutually
+    // independent — checking multiple narrows the table further (intersection).
+    private void KpiToggle_Click(object sender, RoutedEventArgs e)
+    {
+        _filterAvailable = KpiAvailableToggle.IsChecked == true;
+        _filterLow = KpiLowToggle.IsChecked == true;
+        _filterOut = KpiOutToggle.IsChecked == true;
+        // Keep the bottom-bar status chips in sync with the KPI toggles.
+        LowChip.IsChecked = _filterLow;
+        OutChip.IsChecked = _filterOut;
+        ApplyFilter();
+    }
+
+    private void SyncKpiToggles()
+    {
+        KpiLowToggle.IsChecked = _filterLow;
+        KpiOutToggle.IsChecked = _filterOut;
+        KpiAvailableToggle.IsChecked = _filterAvailable;
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
@@ -144,6 +166,8 @@ public partial class InventoryPage : UserControl
         if (!string.IsNullOrEmpty(search))
             q = q.Where(i => i.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
                           || (i.Category ?? "").Contains(search, StringComparison.OrdinalIgnoreCase));
+        if (_filterAvailable)
+            q = q.Where(i => i.IsAvailable && (!i.TracksStock || i.AvailableQty > 0));
         if (_filterLow)
             q = q.Where(i => i.TracksStock && i.AvailableQty > 0 && i.AvailableQty < threshold);
         if (_filterOut)

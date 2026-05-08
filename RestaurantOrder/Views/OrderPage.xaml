@@ -59,11 +59,15 @@
             </ItemsControl>
 
             <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
-                <ItemsControl x:Name="MenuList">
+                          HorizontalScrollBarVisibility="Disabled"
+                          HorizontalContentAlignment="Left"
+                          VerticalContentAlignment="Top">
+                <ItemsControl x:Name="MenuList"
+                              HorizontalAlignment="Left"
+                              VerticalAlignment="Top">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <UniformGrid Columns="4" />
+                            <WrapPanel Orientation="Horizontal" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
@@ -175,6 +179,20 @@
                         <TextBox x:Name="CustomerNameBox"
                                  ui:ControlHelper.PlaceholderText="Customer name (optional)"
                                  Margin="0,0,0,8" />
+
+                        <Border Background="#FFFFF7ED"
+                                BorderBrush="#FFFCD34D" BorderThickness="1"
+                                CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
+                            <CheckBox x:Name="ParcelBox" Cursor="Hand">
+                                <StackPanel>
+                                    <TextBlock Text="Parcel order" FontWeight="SemiBold" FontSize="14"
+                                               Foreground="{StaticResource BrandTextBrush}" />
+                                    <TextBlock Text="Marks bill &amp; kitchen ticket as PARCEL"
+                                               FontSize="11"
+                                               Foreground="{StaticResource BrandSubtleTextBrush}" />
+                                </StackPanel>
+                            </CheckBox>
+                        </Border>
 
                         <Grid Margin="0,0,0,14">
                             <Grid.ColumnDefinitions>

@@ -64,6 +64,7 @@ public static class Database
         AddColumnIfMissing(conn, "Orders", "DiscountAmount", "REAL NOT NULL DEFAULT 0");
         AddColumnIfMissing(conn, "Orders", "RoundingAmount", "REAL NOT NULL DEFAULT 0");
         AddColumnIfMissing(conn, "Orders", "IsVoided", "INTEGER NOT NULL DEFAULT 0");
+        AddColumnIfMissing(conn, "Orders", "IsParcel", "INTEGER NOT NULL DEFAULT 0");
 
         // ReprintLog tracks every reprint so the Order History KPI is accurate.
         using var cmd2 = conn.CreateCommand();

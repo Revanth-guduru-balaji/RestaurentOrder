@@ -7,13 +7,15 @@ namespace RestaurantOrder.Views;
 public partial class ConfirmReceiptWindow : Window
 {
     private readonly Order _order;
+    private readonly bool _printKitchen;
 
     public bool Printed { get; private set; }
 
-    public ConfirmReceiptWindow(Order order)
+    public ConfirmReceiptWindow(Order order, bool printKitchen = false)
     {
         InitializeComponent();
         _order = order;
+        _printKitchen = printKitchen;
         OrderInfoText.Text = $"Order #{order.Id:D5}  ·  {order.Items.Count} items  ·  {Money.Format(order.Total)}";
         Preview.Document = ReceiptPrinter.BuildPreview(order, 360);
     }
@@ -24,7 +26,7 @@ public partial class ConfirmReceiptWindow : Window
     {
         try
         {
-            if (ReceiptPrinter.PrintWithDialog(_order))
+            if (ReceiptPrinter.PrintWithDialog(_order, _printKitchen))
             {
                 Printed = true;
                 Close();

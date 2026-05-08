@@ -18,8 +18,8 @@ public static class OrderRepository
         {
             cmd.CommandText = @"INSERT INTO Orders
                                 (CreatedAt, Subtotal, TaxAmount, DiscountAmount, RoundingAmount,
-                                 Total, PaymentMethod, CustomerName, Notes, IsVoided)
-                                VALUES ($t,$sub,$tax,$disc,$rnd,$tot,$pm,$cn,$nt,0);
+                                 Total, PaymentMethod, CustomerName, Notes, IsVoided, IsParcel)
+                                VALUES ($t,$sub,$tax,$disc,$rnd,$tot,$pm,$cn,$nt,0,$pa);
                                 SELECT last_insert_rowid();";
             cmd.Parameters.AddWithValue("$t", order.CreatedAt.ToString(Iso, CultureInfo.InvariantCulture));
             cmd.Parameters.AddWithValue("$sub", (double)order.Subtotal);
@@ -30,6 +30,7 @@ public static class OrderRepository
             cmd.Parameters.AddWithValue("$pm", order.PaymentMethod ?? "Cash");
             cmd.Parameters.AddWithValue("$cn", (object?)order.CustomerName ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$nt", (object?)order.Notes ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$pa", order.IsParcel ? 1 : 0);
             order.Id = Convert.ToInt32((long)(cmd.ExecuteScalar() ?? 0L));
         }
 
@@ -63,7 +64,8 @@ public static class OrderRepository
                                         o.Subtotal, o.TaxAmount, o.DiscountAmount, o.RoundingAmount,
                                         o.Total, o.PaymentMethod, o.CustomerName, o.Notes, o.IsVoided,
                                         IFNULL(s.LineCount,0) AS LineCount,
-                                        IFNULL(s.PieceCount,0) AS PieceCount
+                                        IFNULL(s.PieceCount,0) AS PieceCount,
+                                        o.IsParcel
                                  FROM Orders o
                                  LEFT JOIN (
                                      SELECT OrderId, COUNT(*) AS LineCount, SUM(Quantity) AS PieceCount
@@ -93,6 +95,7 @@ public static class OrderRepository
                     IsVoided = rdr.GetInt32(10) == 1,
                     LineCount = rdr.GetInt32(11),
                     PieceCount = rdr.GetInt32(12),
+                    IsParcel = rdr.GetInt32(13) == 1,
                 });
             }
         }

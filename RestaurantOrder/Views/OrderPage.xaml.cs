@@ -141,11 +141,16 @@ public partial class OrderPage : UserControl
 
     private Button BuildTile(MenuItem item)
     {
+        // WrapPanel layout: tiles need an explicit width to wrap predictably.
+        // 180dp keeps roughly 4 tiles per row at typical POS resolutions and
+        // gives big finger targets on touchscreens.
         var btn = new Button
         {
             Style = (Style)Application.Current.Resources["MenuTile"],
             Height = 120,
+            Width = 180,
             Margin = new Thickness(6),
+            VerticalAlignment = VerticalAlignment.Top,
             Tag = item
         };
 
@@ -524,6 +529,7 @@ public partial class OrderPage : UserControl
         _cart.Clear();
         CustomerNameBox.Text = "";
         DiscountBox.Text = "0";
+        ParcelBox.IsChecked = false;
         RenderCart();
     }
 
@@ -549,7 +555,8 @@ public partial class OrderPage : UserControl
         {
             CreatedAt = DateTime.Now,
             CustomerName = string.IsNullOrWhiteSpace(CustomerNameBox.Text) ? null : CustomerNameBox.Text.Trim(),
-            PaymentMethod = PayCash.IsChecked == true ? "Cash" : (PayUpi.IsChecked == true ? "UPI" : "Card")
+            PaymentMethod = PayCash.IsChecked == true ? "Cash" : (PayUpi.IsChecked == true ? "UPI" : "Card"),
+            IsParcel = ParcelBox.IsChecked == true
         };
         decimal subtotal = 0;
         foreach (var kv in _cart)
@@ -581,14 +588,19 @@ public partial class OrderPage : UserControl
         {
             if (settings.AutoPrint)
             {
-                try { printed = ReceiptPrinter.PrintQuiet(order); }
+                // First print (the only one that should ever produce a kitchen
+                // ticket): customer bill + kitchen copy.
+                try { printed = ReceiptPrinter.PrintQuiet(order, printKitchen: true); }
                 catch (Exception ex) { printError = ex.Message; }
             }
             else
             {
                 try
                 {
-                    var preview = new ConfirmReceiptWindow(order) { Owner = Window.GetWindow(this) };
+                    var preview = new ConfirmReceiptWindow(order, printKitchen: true)
+                    {
+                        Owner = Window.GetWindow(this)
+                    };
                     preview.ShowDialog();
                     printed = preview.Printed;
                 }
@@ -599,6 +611,7 @@ public partial class OrderPage : UserControl
         _cart.Clear();
         CustomerNameBox.Text = "";
         DiscountBox.Text = "0";
+        ParcelBox.IsChecked = false; // reset for next order
         ReloadMenu();
         RenderCart();
 

@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
@@ -15,6 +18,17 @@ public partial class EditItemWindow : Window
     public EditItemWindow(MenuItem? existing)
     {
         InitializeComponent();
+
+        // Populate category dropdown from existing distinct categories so the
+        // user picks from what's already in use instead of typing free-form.
+        var existingCategories = MenuRepository.GetAll()
+            .Select(i => (i.Category ?? "").Trim())
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        CategoryBox.ItemsSource = existingCategories;
+
         if (existing != null)
         {
             Title = "Edit Menu Item";
@@ -63,7 +77,7 @@ public partial class EditItemWindow : Window
 
         Result ??= new MenuItem();
         Result.Name = name;
-        Result.Category = (CategoryBox.Text ?? "").Trim();
+        Result.Category = (CategoryBox.Text ?? string.Empty).Trim();
         Result.Price = price;
         Result.EstimatedAvailableQty = estQty;
         Result.AvailableQty = estQty == 0 ? 0 : availQty;

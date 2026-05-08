@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
+using System.Windows.Threading;
 using RestaurantOrder.Data;
 using RestaurantOrder.Services;
 
@@ -16,26 +16,17 @@ public partial class SettingsPage : UserControl
     private static readonly Regex IntRegex = new(@"^[0-9]+$", RegexOptions.Compiled);
     private static readonly Regex DecimalRegex = new(@"^[0-9]*\.?[0-9]*$", RegexOptions.Compiled);
     private bool _suppressDirty;
-    private bool _dirty;
+    private readonly DispatcherTimer _saveTimer;
 
     public SettingsPage()
     {
         InitializeComponent();
+        _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
+        _saveTimer.Tick += (_, _) => { _saveTimer.Stop(); CommitToDisk(); };
         Loaded += (_, _) => LoadFromSettings();
-        // Ctrl+S = Save changes
-        PreviewKeyDown += (_, e) =>
-        {
-            if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
-            {
-                Save_Click(this, new RoutedEventArgs());
-                e.Handled = true;
-            }
-        };
+        Unloaded += (_, _) => { if (_saveTimer.IsEnabled) { _saveTimer.Stop(); CommitToDisk(); } };
     }
 
-    // ---------------------------------------------------------------
-    // Form load / save / discard
-    // ---------------------------------------------------------------
     private void LoadFromSettings()
     {
         _suppressDirty = true;
@@ -72,12 +63,10 @@ public partial class SettingsPage : UserControl
         }
 
         _suppressDirty = false;
-        _dirty = false;
-        SetStatus(false, lastSaved: true);
         RefreshPreview();
     }
 
-    private void Save_Click(object sender, RoutedEventArgs e)
+    private void CommitToDisk()
     {
         var s = AppSettings.Current;
         s.ShopName = (ShopNameBox.Text ?? "").Trim();
@@ -95,34 +84,14 @@ public partial class SettingsPage : UserControl
         if (int.TryParse(LowStockThresholdBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var th) && th >= 0)
             s.LowStockThreshold = th;
 
-        try { s.Save(); }
-        catch (Exception ex)
-        {
-            MessageBox.Show("Could not save settings: " + ex.Message, "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
-        }
-
-        _dirty = false;
-        SetStatus(false, lastSaved: true);
+        try { s.Save(); } catch { /* ignore — will retry on next change */ }
     }
 
-    private void Discard_Click(object sender, RoutedEventArgs e)
-    {
-        if (!_dirty) return;
-        var ok = MessageBox.Show("Discard unsaved changes and reload settings?",
-            "Discard changes", MessageBoxButton.YesNo, MessageBoxImage.Question);
-        if (ok == MessageBoxResult.Yes) LoadFromSettings();
-    }
-
-    // ---------------------------------------------------------------
-    // Live preview + dirty tracking
-    // ---------------------------------------------------------------
     private void FormField_Changed(object sender, RoutedEventArgs e)
     {
         if (_suppressDirty) return;
-        _dirty = true;
-        SetStatus(true, lastSaved: false);
+        _saveTimer.Stop();
+        _saveTimer.Start();
         RefreshPreview();
     }
 
@@ -140,23 +109,6 @@ public partial class SettingsPage : UserControl
         RcAddress.Text = addr;
     }
 
-    private void SetStatus(bool dirty, bool lastSaved)
-    {
-        if (dirty)
-        {
-            StatusDot.Fill = (Brush)Application.Current.Resources["WarnAccentBrush"];
-            StatusText.Text = "Unsaved changes";
-        }
-        else if (lastSaved)
-        {
-            StatusDot.Fill = (Brush)Application.Current.Resources["BrandSuccessBrush"];
-            StatusText.Text = $"All changes saved · {DateTime.Now:hh:mm tt}";
-        }
-    }
-
-    // ---------------------------------------------------------------
-    // Section nav rail
-    // ---------------------------------------------------------------
     private void SectionNav_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not RadioButton rb || rb.Tag is not string targetName) return;
@@ -164,9 +116,6 @@ public partial class SettingsPage : UserControl
             el.BringIntoView();
     }
 
-    // ---------------------------------------------------------------
-    // Inputs / printer
-    // ---------------------------------------------------------------
     private void IntOnly_PreviewTextInput(object sender, TextCompositionEventArgs e)
         => e.Handled = !IntRegex.IsMatch(e.Text);
 
@@ -175,20 +124,12 @@ public partial class SettingsPage : UserControl
 
     private void TestPrint_Click(object sender, RoutedEventArgs e)
     {
-        var s = AppSettings.Current;
-        var savedPrinter = s.DefaultPrinterName;
-        var savedName = s.ShopName;
-        var savedLine = s.ShopLine2;
-        var savedAddr = s.ShopAddress;
-        var savedCompact = s.CompactReceipt;
+        // Snapshot current form values to settings first so the test print uses
+        // exactly what the user is looking at.
+        if (_saveTimer.IsEnabled) { _saveTimer.Stop(); CommitToDisk(); }
+
         try
         {
-            s.ShopName = (ShopNameBox.Text ?? "").Trim();
-            s.ShopLine2 = (ShopLine2Box.Text ?? "").Trim();
-            s.ShopAddress = (ShopAddressBox.Text ?? "").Trim();
-            s.DefaultPrinterName = PrinterCombo.SelectedItem as string ?? "";
-            s.CompactReceipt = CompactBox.IsChecked == true;
-
             var sample = new Order
             {
                 Id = 0,
@@ -204,6 +145,7 @@ public partial class SettingsPage : UserControl
                 }
             };
             var sent = ReceiptPrinter.PrintQuiet(sample);
+            var s = AppSettings.Current;
             PrinterHint.Text = sent
                 ? "Test sent to " + (string.IsNullOrEmpty(s.DefaultPrinterName) ? "selected printer" : s.DefaultPrinterName)
                 : "Test print cancelled.";
@@ -212,14 +154,6 @@ public partial class SettingsPage : UserControl
         {
             MessageBox.Show("Test print failed: " + ex.Message, "Error",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        finally
-        {
-            s.ShopName = savedName;
-            s.ShopLine2 = savedLine;
-            s.ShopAddress = savedAddr;
-            s.DefaultPrinterName = savedPrinter;
-            s.CompactReceipt = savedCompact;
         }
     }
 }

@@ -23,6 +23,8 @@ public partial class OrderHistoryPage : UserControl
     private OrderRowVm? _selected;
     private bool _suppressReload;
     private readonly ObservableCollection<object> _items = new();
+    private bool _filterWalkIn;
+    private bool _filterParcel;
 
     public OrderHistoryPage()
     {
@@ -63,6 +65,13 @@ public partial class OrderHistoryPage : UserControl
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => Reload();
 
+    private void ChannelChip_Click(object sender, RoutedEventArgs e)
+    {
+        _filterWalkIn = WalkInChip.IsChecked == true;
+        _filterParcel = ParcelChip.IsChecked == true;
+        Reload();
+    }
+
     private void Today_Click(object sender, RoutedEventArgs e) => SetDates(DateTime.Today, DateTime.Today);
     private void Week_Click(object sender, RoutedEventArgs e) => SetDates(DateTime.Today.AddDays(-6), DateTime.Today);
     private void Month_Click(object sender, RoutedEventArgs e)
@@ -90,6 +99,14 @@ public partial class OrderHistoryPage : UserControl
         var search = (SearchBox.Text ?? "").Trim();
 
         _orders = OrderRepository.GetBetween(from, to, search);
+
+        // Walk-in / Parcel chips: when both are off, show everything; when one
+        // is on, narrow to that channel; when both are on, show both (i.e. all)
+        // since an order is exactly one of the two.
+        if (_filterWalkIn && !_filterParcel)
+            _orders = _orders.Where(o => !o.IsParcel).ToList();
+        else if (_filterParcel && !_filterWalkIn)
+            _orders = _orders.Where(o => o.IsParcel).ToList();
 
         UpdateKpis();
         UpdateSparkline(from, to);
@@ -553,6 +570,7 @@ public class OrderRowVm : System.ComponentModel.INotifyPropertyChanged
 
     public bool IsVoided => Source.IsVoided;
     public Visibility VoidedBadgeVisibility => Source.IsVoided ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ParcelBadgeVisibility => Source.IsParcel ? Visibility.Visible : Visibility.Collapsed;
     public double RowItemOpacity => Source.IsVoided ? 0.55 : 1.0;
 
     public Brush PayBg => PaymentColors(Source.PaymentMethod).bg;
