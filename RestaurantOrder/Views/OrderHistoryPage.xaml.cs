@@ -65,11 +65,28 @@ public partial class OrderHistoryPage : UserControl
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => Reload();
 
+    private void TimeFilter_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (_suppressReload) return;
+        Reload();
+    }
+
     private void ChannelChip_Click(object sender, RoutedEventArgs e)
     {
         _filterWalkIn = WalkInChip.IsChecked == true;
         _filterParcel = ParcelChip.IsChecked == true;
         Reload();
+    }
+
+    /// Parses "HH:mm" or "H:m" into a TimeSpan. Empty / unparseable input
+    /// returns null so callers can fall back to a default.
+    private static TimeSpan? ParseTime(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        if (TimeSpan.TryParseExact(text.Trim(), new[] { @"h\:m", @"hh\:mm" },
+                CultureInfo.InvariantCulture, out var ts))
+            return ts;
+        return null;
     }
 
     private void Today_Click(object sender, RoutedEventArgs e) => SetDates(DateTime.Today, DateTime.Today);
@@ -94,8 +111,14 @@ public partial class OrderHistoryPage : UserControl
     // -----------------------------------------------------------------
     private void Reload()
     {
-        var from = (FromDate.SelectedDate ?? DateTime.Today.AddDays(-6)).Date;
-        var to = (ToDate.SelectedDate ?? DateTime.Today).Date.AddDays(1);
+        var fromDay = (FromDate.SelectedDate ?? DateTime.Today.AddDays(-6)).Date;
+        var toDay = (ToDate.SelectedDate ?? DateTime.Today).Date;
+        // Time defaults: from = 00:00, to = end-of-day exclusive. Cashiers
+        // can narrow to e.g. 14:00 → 22:00 to see only the dinner shift.
+        var fromTime = ParseTime(FromTime?.Text) ?? TimeSpan.Zero;
+        var toTimeOpt = ParseTime(ToTime?.Text);
+        var from = fromDay + fromTime;
+        var to = toTimeOpt.HasValue ? toDay + toTimeOpt.Value : toDay.AddDays(1);
         var search = (SearchBox.Text ?? "").Trim();
 
         _orders = OrderRepository.GetBetween(from, to, search);
@@ -130,9 +153,13 @@ public partial class OrderHistoryPage : UserControl
         KpiAvgValue.Text = Money.Format(avg);
         CountText.Text = $"{n} orders · {Money.Format(revenue)}";
 
-        // Reprints KPI for the active range
-        var from = (FromDate.SelectedDate ?? DateTime.Today.AddDays(-6)).Date;
-        var to = (ToDate.SelectedDate ?? DateTime.Today).Date.AddDays(1);
+        // Reprints KPI for the active range — same window as the orders list.
+        var fromDay = (FromDate.SelectedDate ?? DateTime.Today.AddDays(-6)).Date;
+        var toDay = (ToDate.SelectedDate ?? DateTime.Today).Date;
+        var fromTime = ParseTime(FromTime?.Text) ?? TimeSpan.Zero;
+        var toTimeOpt = ParseTime(ToTime?.Text);
+        var from = fromDay + fromTime;
+        var to = toTimeOpt.HasValue ? toDay + toTimeOpt.Value : toDay.AddDays(1);
         int reprints = OrderRepository.CountReprintsBetween(from, to);
         KpiReprintsValue.Text = reprints.ToString("N0", CultureInfo.InvariantCulture);
         KpiReprintsSub.Text = n > 0
@@ -149,7 +176,9 @@ public partial class OrderHistoryPage : UserControl
 
         var points = new List<BarPoint>();
         var cursor = from.Date;
-        var end = to.Date.AddDays(-1); // inclusive
+        // 'to' is exclusive; subtract a tick before truncating so a 22:00
+        // upper bound on day X still buckets day X.
+        var end = to.AddTicks(-1).Date;
         while (cursor <= end)
         {
             int v = byDay.TryGetValue(cursor, out var c) ? c : 0;

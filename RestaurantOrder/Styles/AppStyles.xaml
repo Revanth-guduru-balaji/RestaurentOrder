@@ -782,11 +782,13 @@
     </Style>
 
     <!-- ============================================================
-         Slim, pill-shaped scroll bars (overlay style, like macOS / MUI).
-         Auto-hides arrow buttons, no chrome on track, thumb is a pill
-         that fattens on hover. Track is roomy enough for fat fingers.
+         Slim pill scroll bars — named style, applied per ScrollViewer.
+         (We don't override implicit ScrollBar globally because that
+         interferes with ComboBox / DataGrid chrome at load time.)
+
+         Usage: <ScrollViewer Style="{StaticResource SlimScroll}"> ...
          ============================================================ -->
-    <Style x:Key="ScrollBarThumb" TargetType="Thumb">
+    <Style x:Key="SlimScrollThumb" TargetType="Thumb">
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="IsTabStop" Value="False" />
         <Setter Property="Focusable" Value="False" />
@@ -798,14 +800,12 @@
                                 Background="#FFB0BAC4"
                                 CornerRadius="4"
                                 Margin="3"
-                                MinHeight="40"
-                                MinWidth="6"
                                 Opacity="0.6" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="ThumbVisual" Property="Background" Value="{StaticResource BrandPrimaryBrush}" />
-                            <Setter TargetName="ThumbVisual" Property="Opacity" Value="0.9" />
+                            <Setter TargetName="ThumbVisual" Property="Opacity" Value="0.95" />
                         </Trigger>
                         <Trigger Property="IsDragging" Value="True">
                             <Setter TargetName="ThumbVisual" Property="Background" Value="{StaticResource BrandPrimaryDarkBrush}" />
@@ -817,26 +817,35 @@
         </Setter>
     </Style>
 
-    <Style TargetType="ScrollBar">
+    <Style x:Key="SlimScrollBar" TargetType="ScrollBar">
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
-        <Setter Property="Foreground" Value="Transparent" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Width" Value="12" />
-        <Setter Property="MinWidth" Value="12" />
+        <Setter Property="Width" Value="11" />
+        <Setter Property="MinWidth" Value="11" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ScrollBar">
-                    <Grid x:Name="Bg" Background="Transparent">
-                        <Track x:Name="PART_Track" IsDirectionReversed="True" IsEnabled="{TemplateBinding IsMouseOver}">
+                    <Grid Background="Transparent">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True">
                             <Track.Thumb>
-                                <Thumb Style="{StaticResource ScrollBarThumb}" />
+                                <Thumb Style="{StaticResource SlimScrollThumb}" />
                             </Track.Thumb>
                             <Track.IncreaseRepeatButton>
-                                <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False" />
+                                <RepeatButton Command="ScrollBar.PageDownCommand"
+                                              Background="Transparent"
+                                              BorderThickness="0"
+                                              Opacity="0"
+                                              Focusable="False"
+                                              IsTabStop="False" />
                             </Track.IncreaseRepeatButton>
                             <Track.DecreaseRepeatButton>
-                                <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False" />
+                                <RepeatButton Command="ScrollBar.PageUpCommand"
+                                              Background="Transparent"
+                                              BorderThickness="0"
+                                              Opacity="0"
+                                              Focusable="False"
+                                              IsTabStop="False" />
                             </Track.DecreaseRepeatButton>
                         </Track>
                     </Grid>
@@ -844,8 +853,8 @@
                         <Trigger Property="Orientation" Value="Horizontal">
                             <Setter Property="Width" Value="Auto" />
                             <Setter Property="MinWidth" Value="0" />
-                            <Setter Property="Height" Value="12" />
-                            <Setter Property="MinHeight" Value="12" />
+                            <Setter Property="Height" Value="11" />
+                            <Setter Property="MinHeight" Value="11" />
                             <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -853,6 +862,18 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!-- Drop-in inline resource that retargets the ScrollBars *inside* a
+         single ScrollViewer to the slim style. Use as:
+           <ScrollViewer ...>
+               <ScrollViewer.Resources>
+                   <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimScrollBar}" />
+               </ScrollViewer.Resources>
+               ...
+           </ScrollViewer>
+         Scoped this way it cannot leak into ComboBox / DataGrid templates. -->
+
+
 
     <Style TargetType="DataGrid">
         <Setter Property="Background" Value="White" />

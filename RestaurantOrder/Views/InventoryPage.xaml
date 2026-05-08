@@ -223,7 +223,7 @@
 
                 <!-- Search pill -->
                 <Border Grid.Column="0" Background="{StaticResource BrandSoftSurfaceBrush}"
-                        CornerRadius="6" Padding="10,4">
+                        CornerRadius="18" MinHeight="36" Padding="14,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
@@ -305,7 +305,11 @@
                 </Border>
 
                 <!-- tbody -->
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ScrollViewer Grid.Row="1"
+                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ScrollViewer.Resources>
+                        <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimScrollBar}" />
+                    </ScrollViewer.Resources>
                     <ItemsControl x:Name="RowsList">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -373,7 +377,7 @@
                                                    HorizontalAlignment="Right" VerticalAlignment="Center"
                                                    Margin="0,0,14,0" />
 
-                                        <!-- stock bar -->
+                                        <!-- stock numbers (progress bar removed; just '12 / 50') -->
                                         <StackPanel Grid.Column="4" VerticalAlignment="Center" Margin="0,0,8,0">
                                             <Grid Visibility="{Binding StockLineVisibility}">
                                                 <Grid.ColumnDefinitions>
@@ -381,15 +385,15 @@
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Grid.Column="0" Text="{Binding AvailQtyText}"
-                                                           FontWeight="SemiBold" FontSize="12"
+                                                           FontWeight="SemiBold" FontSize="13"
                                                            Foreground="{Binding QtyForeground}" />
                                                 <TextBlock Grid.Column="1" Text="{Binding EstQtyText}"
-                                                           FontSize="12"
+                                                           FontSize="13"
                                                            Foreground="{StaticResource BrandSubtleTextBrush}" />
                                             </Grid>
                                             <Border Style="{StaticResource StockBarTrack}"
                                                     Margin="0,5,0,0"
-                                                    Visibility="{Binding StockLineVisibility}">
+                                                    Visibility="Collapsed">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="{Binding FillStar}" />

@@ -43,8 +43,9 @@
                     Background="White"
                     BorderBrush="{StaticResource BrandBorderBrush}"
                     BorderThickness="1"
-                    CornerRadius="6"
-                    Padding="12,4">
+                    CornerRadius="20"
+                    MinHeight="40"
+                    Padding="14,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -70,10 +71,14 @@
                 </ItemsControl.ItemsPanel>
             </ItemsControl>
 
-            <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto"
+            <ScrollViewer Grid.Row="4"
+                          VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
                           HorizontalContentAlignment="Left"
                           VerticalContentAlignment="Top">
+                <ScrollViewer.Resources>
+                    <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimScrollBar}" />
+                </ScrollViewer.Resources>
                 <ItemsControl x:Name="MenuList"
                               HorizontalAlignment="Left"
                               VerticalAlignment="Top">
@@ -108,6 +113,9 @@
                 </Border>
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="14,8">
+                    <ScrollViewer.Resources>
+                        <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimScrollBar}" />
+                    </ScrollViewer.Resources>
                     <StackPanel x:Name="CartList" />
                 </ScrollViewer>
 

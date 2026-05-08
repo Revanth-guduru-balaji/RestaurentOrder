@@ -34,6 +34,9 @@
         </Style>
     </UserControl.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer.Resources>
+            <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimScrollBar}" />
+        </ScrollViewer.Resources>
         <Grid Margin="28,24">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />

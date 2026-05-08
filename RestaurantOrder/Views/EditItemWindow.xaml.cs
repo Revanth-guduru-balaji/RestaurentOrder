@@ -66,13 +66,23 @@ public partial class EditItemWindow : Window
         }
         if (price < 0) { MessageBox.Show("Price cannot be negative."); return; }
 
-        if (!int.TryParse(EstQtyBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var estQty) || estQty < 0)
+        // Empty / blank qty fields are treated as 0 (untracked). Only error
+        // on garbage input or a negative number.
+        int estQty = 0;
+        if (!string.IsNullOrWhiteSpace(EstQtyBox.Text))
         {
-            MessageBox.Show("Estimated qty must be a non-negative whole number."); return;
+            if (!int.TryParse(EstQtyBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out estQty) || estQty < 0)
+            {
+                MessageBox.Show("Estimated qty must be a non-negative whole number."); return;
+            }
         }
-        if (!int.TryParse(AvailQtyBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var availQty) || availQty < 0)
+        int availQty = 0;
+        if (!string.IsNullOrWhiteSpace(AvailQtyBox.Text))
         {
-            MessageBox.Show("Available qty must be a non-negative whole number."); return;
+            if (!int.TryParse(AvailQtyBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out availQty) || availQty < 0)
+            {
+                MessageBox.Show("Available qty must be a non-negative whole number."); return;
+            }
         }
 
         Result ??= new MenuItem();

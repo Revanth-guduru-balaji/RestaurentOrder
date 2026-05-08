@@ -291,7 +291,6 @@ public static class ReceiptPrinter
     public static FlowDocument BuildKitchenTicket(Order order, double pageWidth)
     {
         double bodySize = 14;
-        double headerSize = 16;
         double padX = 8;
         double padY = 8;
 
@@ -309,15 +308,28 @@ public static class ReceiptPrinter
             LineStackingStrategy = LineStackingStrategy.BlockLineHeight
         };
 
+        // Big "ORDER #00012" header — the kitchen reads this from across the
+        // counter to call out a ready order.
         var head = new Paragraph
         {
             TextAlignment = TextAlignment.Center,
             FontWeight = FontWeights.Bold,
-            FontSize = headerSize,
-            Margin = new Thickness(0, 0, 0, 2)
+            FontSize = 12,
+            Margin = new Thickness(0, 0, 0, 2),
+            Foreground = Brushes.Black
         };
-        head.Inlines.Add(new Run("KITCHEN"));
+        head.Inlines.Add(new Run("KITCHEN COPY"));
         doc.Blocks.Add(head);
+
+        var idLine = new Paragraph
+        {
+            TextAlignment = TextAlignment.Center,
+            FontWeight = FontWeights.Bold,
+            FontSize = 26,
+            Margin = new Thickness(0, 2, 0, 2)
+        };
+        idLine.Inlines.Add(new Run($"# {order.Id:D5}"));
+        doc.Blocks.Add(idLine);
 
         if (order.IsParcel)
         {
@@ -325,7 +337,7 @@ public static class ReceiptPrinter
             {
                 TextAlignment = TextAlignment.Center,
                 FontWeight = FontWeights.Bold,
-                FontSize = headerSize,
+                FontSize = 16,
                 Margin = new Thickness(0, 2, 0, 2)
             };
             doc.Blocks.Add(parcel);
@@ -337,8 +349,9 @@ public static class ReceiptPrinter
             FontSize = bodySize,
             Margin = new Thickness(0, 0, 0, 4)
         };
-        meta.Inlines.Add(new Run($"#{order.Id:D5}") { FontWeight = FontWeights.Bold });
-        meta.Inlines.Add(new Run($"   {order.CreatedAt:HH:mm}"));
+        meta.Inlines.Add(new Run($"{order.CreatedAt:dd-MMM HH:mm}"));
+        if (!string.IsNullOrWhiteSpace(order.CustomerName))
+            meta.Inlines.Add(new Run($"   {order.CustomerName}"));
         doc.Blocks.Add(meta);
 
         doc.Blocks.Add(MakeRule(false));
