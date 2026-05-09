@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -27,18 +28,29 @@ public partial class OrderHistoryPage : UserControl
     private bool _filterParcel;
     private bool _datesInitialized;
 
+    /// 30-minute time options for the From/To time combos. The trailing
+    /// 23:59 value lets the cashier include the entire last day without
+    /// resorting to free-text entry.
+    private static readonly string[] TimeOptions =
+        Enumerable.Range(0, 48)
+            .Select(half => $"{half / 2:D2}:{(half % 2 == 0 ? "00" : "30")}")
+            .Append("23:59")
+            .ToArray();
+
     public OrderHistoryPage()
     {
         InitializeComponent();
         OrdersList.ItemsSource = _items;
         Loaded += (_, _) =>
         {
-            // Initialize the date range only once. Page is cached across nav,
-            // so subsequent visits keep whatever range the cashier last picked
-            // — and the segment radio + dates stay in sync.
+            // Initialize once; page is cached across nav.
             if (!_datesInitialized)
             {
                 _suppressReload = true;
+                FromTimeCombo.ItemsSource = TimeOptions;
+                ToTimeCombo.ItemsSource = TimeOptions;
+                FromTimeCombo.SelectedItem = "00:00";
+                ToTimeCombo.SelectedItem = "23:59";
                 ToDate.SelectedDate = DateTime.Today;
                 FromDate.SelectedDate = DateTime.Today.AddDays(-6);
                 _suppressReload = false;
@@ -68,15 +80,62 @@ public partial class OrderHistoryPage : UserControl
     private void DateRange_Changed(object? sender, SelectionChangedEventArgs e)
     {
         if (_suppressReload) return;
+        ClearPresetSelection();
         Reload();
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => Reload();
 
-    private void TimeFilter_Changed(object sender, TextChangedEventArgs e)
+    private void TimeCombo_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (_suppressReload) return;
+        ClearPresetSelection(); // a manual time edit means 'Custom'
         Reload();
+    }
+
+    private void Preset_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton btn || btn.Tag is not string tag) return;
+
+        // Single-select among presets; clicking the active one keeps it on.
+        foreach (var p in PresetButtons()) p.IsChecked = ReferenceEquals(p, btn);
+
+        var today = DateTime.Today;
+        DateTime from, to;
+        switch (tag)
+        {
+            case "Today":     from = today; to = today; break;
+            case "Yesterday": from = today.AddDays(-1); to = today.AddDays(-1); break;
+            case "Week":      from = today.AddDays(-6); to = today; break;
+            case "Thirty":    from = today.AddDays(-29); to = today; break;
+            case "Month":     from = new DateTime(today.Year, today.Month, 1); to = today; break;
+            case "All":       from = today.AddYears(-10); to = today; break;
+            default: return;
+        }
+
+        _suppressReload = true;
+        FromDate.SelectedDate = from;
+        ToDate.SelectedDate = to;
+        FromTimeCombo.SelectedItem = "00:00";
+        ToTimeCombo.SelectedItem = "23:59";
+        _suppressReload = false;
+        Reload();
+    }
+
+    private IEnumerable<ToggleButton> PresetButtons()
+    {
+        yield return PresetToday;
+        yield return PresetYesterday;
+        yield return PresetWeek;
+        yield return PresetThirty;
+        yield return PresetMonth;
+        yield return PresetAll;
+    }
+
+    private void ClearPresetSelection()
+    {
+        // Manual date / time edit decouples the view from any preset.
+        foreach (var p in PresetButtons()) p.IsChecked = false;
     }
 
     private void ChannelChip_Click(object sender, RoutedEventArgs e)
@@ -121,12 +180,22 @@ public partial class OrderHistoryPage : UserControl
     {
         var fromDay = (FromDate.SelectedDate ?? DateTime.Today.AddDays(-6)).Date;
         var toDay = (ToDate.SelectedDate ?? DateTime.Today).Date;
-        // Time defaults: from = 00:00, to = end-of-day exclusive. Cashiers
-        // can narrow to e.g. 14:00 → 22:00 to see only the dinner shift.
-        var fromTime = ParseTime(FromTime?.Text) ?? TimeSpan.Zero;
-        var toTimeOpt = ParseTime(ToTime?.Text);
+        var fromTime = ParseTime(FromTimeCombo?.SelectedItem as string) ?? TimeSpan.Zero;
+        var toTimeOpt = ParseTime(ToTimeCombo?.SelectedItem as string);
         var from = fromDay + fromTime;
-        var to = toTimeOpt.HasValue ? toDay + toTimeOpt.Value : toDay.AddDays(1);
+        // To = end-of-day exclusive when no explicit time picked. 23:59 maps
+        // to 23:59:59.999 so the last day's late orders are included.
+        DateTime to;
+        if (toTimeOpt.HasValue)
+        {
+            to = toTimeOpt.Value == new TimeSpan(23, 59, 0)
+                ? toDay.AddDays(1).AddTicks(-1)
+                : toDay + toTimeOpt.Value;
+        }
+        else
+        {
+            to = toDay.AddDays(1);
+        }
         var search = (SearchBox.Text ?? "").Trim();
 
         _orders = OrderRepository.GetBetween(from, to, search);
@@ -164,10 +233,20 @@ public partial class OrderHistoryPage : UserControl
         // Reprints KPI for the active range — same window as the orders list.
         var fromDay = (FromDate.SelectedDate ?? DateTime.Today.AddDays(-6)).Date;
         var toDay = (ToDate.SelectedDate ?? DateTime.Today).Date;
-        var fromTime = ParseTime(FromTime?.Text) ?? TimeSpan.Zero;
-        var toTimeOpt = ParseTime(ToTime?.Text);
+        var fromTime = ParseTime(FromTimeCombo?.SelectedItem as string) ?? TimeSpan.Zero;
+        var toTimeOpt = ParseTime(ToTimeCombo?.SelectedItem as string);
         var from = fromDay + fromTime;
-        var to = toTimeOpt.HasValue ? toDay + toTimeOpt.Value : toDay.AddDays(1);
+        DateTime to;
+        if (toTimeOpt.HasValue)
+        {
+            to = toTimeOpt.Value == new TimeSpan(23, 59, 0)
+                ? toDay.AddDays(1).AddTicks(-1)
+                : toDay + toTimeOpt.Value;
+        }
+        else
+        {
+            to = toDay.AddDays(1);
+        }
         int reprints = OrderRepository.CountReprintsBetween(from, to);
         KpiReprintsValue.Text = reprints.ToString("N0", CultureInfo.InvariantCulture);
         KpiReprintsSub.Text = n > 0

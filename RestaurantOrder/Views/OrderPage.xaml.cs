@@ -204,9 +204,12 @@ public partial class OrderPage : UserControl
                 foreach (var it in _activeDraft.Items)
                 {
                     var live = _allItems.FirstOrDefault(x => x.Id == it.MenuItemId);
-                    // If the item was deleted from the menu since the draft was
-                    // saved, fall back to a synthetic MenuItem so the line still
-                    // shows in the cart with its captured price.
+                    // If the item is no longer in the live menu (deleted /
+                    // marked unavailable), keep the line with its captured
+                    // price + qty. We can't know stock-tracking state here, so
+                    // we treat it as untracked — Place & Print will still
+                    // validate against the real DB and surface a 'Stock
+                    // changed' message if the item won't deduct.
                     var menuItem = live ?? new MenuItem
                     {
                         Id = it.MenuItemId,
@@ -239,11 +242,15 @@ public partial class OrderPage : UserControl
         RebuildDraftTabs(); // tab counts may have changed after _cart was rewritten
     }
 
-    /// Schedule a debounced persist of the active draft. Called on every
-    /// cart mutation (add / remove / qty / customer / parcel / discount).
+    /// Schedule a debounced persist of the active draft. Eagerly mirrors
+    /// the current UI into the in-memory Draft so tab labels and counts
+    /// reflect the live state immediately (the 500ms timer just handles
+    /// the disk write). If the OS kills the process before the timer
+    /// fires, in-memory state stays consistent until Unloaded flushes it.
     private void MarkDraftDirty()
     {
         if (_suppressDraftSave) return;
+        SyncCartToActiveDraft();
         _saveTimer.Stop();
         _saveTimer.Start();
     }
