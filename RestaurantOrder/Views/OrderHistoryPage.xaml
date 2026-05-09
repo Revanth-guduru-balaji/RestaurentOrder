@@ -60,7 +60,8 @@
                                     Margin="8,0,0,0">
                                 <TextBlock Text="{Binding PaymentMethodUpper}"
                                            FontSize="10" FontWeight="SemiBold"
-                                           Foreground="{Binding PayFg}" />
+                                           Foreground="{Binding PayFg}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Center" />
                             </Border>
                             <Border Style="{StaticResource PaymentChip}"
                                     Background="{StaticResource WarnBgBrush}"
@@ -68,7 +69,8 @@
                                     Visibility="{Binding ParcelBadgeVisibility}">
                                 <TextBlock Text="PARCEL"
                                            FontSize="10" FontWeight="SemiBold"
-                                           Foreground="{StaticResource WarnFgBrush}" />
+                                           Foreground="{StaticResource WarnFgBrush}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Center" />
                             </Border>
                             <Border Style="{StaticResource PaymentChip}"
                                     Background="{StaticResource DangerBgBrush}"
@@ -76,7 +78,8 @@
                                     Visibility="{Binding VoidedBadgeVisibility}">
                                 <TextBlock Text="VOIDED"
                                            FontSize="10" FontWeight="SemiBold"
-                                           Foreground="{StaticResource DangerFgBrush}" />
+                                           Foreground="{StaticResource DangerFgBrush}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Center" />
                             </Border>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
@@ -122,21 +125,36 @@
                            Style="{StaticResource PageSubtitle}" Margin="0,4,0,0" />
             </StackPanel>
             <WrapPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                <!-- FROM pill: 'From' label + date + time -->
                 <Border Background="White" BorderBrush="{StaticResource BrandBorderBrush}" BorderThickness="1"
-                        CornerRadius="20" Padding="10,2" Margin="0,0,8,0" VerticalAlignment="Center">
+                        CornerRadius="20" Padding="14,4" Margin="0,0,6,0" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="From" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" />
                         <DatePicker x:Name="FromDate" BorderThickness="0" Background="Transparent"
                                     Width="118" SelectedDateChanged="DateRange_Changed" />
-                        <TextBox x:Name="FromTime" Width="62" BorderThickness="0" Background="Transparent"
-                                 VerticalContentAlignment="Center" Padding="0" FontSize="13"
+                        <Border Width="1" Height="18" Background="{StaticResource BrandBorderBrush}" Margin="6,0" />
+                        <TextBox x:Name="FromTime" Width="56" BorderThickness="0" Background="Transparent"
+                                 VerticalContentAlignment="Center" Padding="0" FontSize="13" FontWeight="SemiBold"
                                  ui:ControlHelper.PlaceholderText="00:00"
                                  TextChanged="TimeFilter_Changed" />
-                        <TextBlock Text="→" Margin="6,0" VerticalAlignment="Center"
-                                   Foreground="{StaticResource BrandSubtleTextBrush}" />
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="→" Margin="2,0,2,0" VerticalAlignment="Center" FontSize="14"
+                           Foreground="{StaticResource BrandSubtleTextBrush}" />
+                <!-- TO pill -->
+                <Border Background="White" BorderBrush="{StaticResource BrandBorderBrush}" BorderThickness="1"
+                        CornerRadius="20" Padding="14,4" Margin="2,0,8,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="To" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" />
                         <DatePicker x:Name="ToDate" BorderThickness="0" Background="Transparent"
                                     Width="118" SelectedDateChanged="DateRange_Changed" />
-                        <TextBox x:Name="ToTime" Width="62" BorderThickness="0" Background="Transparent"
-                                 VerticalContentAlignment="Center" Padding="0" FontSize="13"
+                        <Border Width="1" Height="18" Background="{StaticResource BrandBorderBrush}" Margin="6,0" />
+                        <TextBox x:Name="ToTime" Width="56" BorderThickness="0" Background="Transparent"
+                                 VerticalContentAlignment="Center" Padding="0" FontSize="13" FontWeight="SemiBold"
                                  ui:ControlHelper.PlaceholderText="23:59"
                                  TextChanged="TimeFilter_Changed" />
                     </StackPanel>

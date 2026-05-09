@@ -59,6 +59,17 @@ public partial class EditItemWindow : Window
         {
             MessageBox.Show("Name is required."); return;
         }
+
+        // Reject duplicate names case-insensitively. excludeId=0 for new
+        // items; for edits we skip the row we're updating.
+        var existingId = Result?.Id ?? 0;
+        var clash = MenuRepository.FindByName(name, excludeId: existingId);
+        if (clash != null)
+        {
+            MessageBox.Show($"An item named '{clash.Name}' already exists.",
+                "Duplicate item", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
         if (!decimal.TryParse(PriceBox.Text, NumberStyles.Number, CultureInfo.InvariantCulture, out var price)
             && !decimal.TryParse(PriceBox.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out price))
         {

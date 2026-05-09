@@ -105,9 +105,73 @@ public static class OrderRepository
     public static void SetVoided(int orderId, bool voided)
     {
         using var conn = Database.Open();
+        using var tx = conn.BeginTransaction();
+
+        // Read current state so we don't double-apply stock adjustments
+        // (idempotent: voiding a voided order does nothing).
+        bool wasVoided;
+        using (var read = conn.CreateCommand())
+        {
+            read.CommandText = "SELECT IsVoided FROM Orders WHERE Id=$id";
+            read.Parameters.AddWithValue("$id", orderId);
+            var v = read.ExecuteScalar();
+            if (v == null || v == DBNull.Value) { tx.Rollback(); return; }
+            wasVoided = Convert.ToInt32(v) == 1;
+        }
+        if (wasVoided == voided) { tx.Rollback(); return; }
+
+        // Voiding (false→true): add the order's quantities back to stock.
+        // Restoring (true→false): re-deduct.
+        int sign = voided ? +1 : -1;
+        using (var items = conn.CreateCommand())
+        {
+            items.CommandText = "SELECT MenuItemId, Quantity FROM OrderItems WHERE OrderId=$id";
+            items.Parameters.AddWithValue("$id", orderId);
+            using var rdr = items.ExecuteReader();
+            var deltas = new List<(int id, int qty)>();
+            while (rdr.Read()) deltas.Add((rdr.GetInt32(0), rdr.GetInt32(1)));
+            rdr.Close();
+
+            foreach (var (id, qty) in deltas)
+            {
+                // Only adjust tracked items (EstimatedAvailableQty > 0).
+                using var upd = conn.CreateCommand();
+                upd.CommandText = @"UPDATE MenuItems
+                                    SET AvailableQty = MAX(0, AvailableQty + ($s) * $q)
+                                    WHERE Id = $mi AND EstimatedAvailableQty > 0";
+                upd.Parameters.AddWithValue("$s", sign);
+                upd.Parameters.AddWithValue("$q", qty);
+                upd.Parameters.AddWithValue("$mi", id);
+                upd.ExecuteNonQuery();
+            }
+        }
+
+        using (var setFlag = conn.CreateCommand())
+        {
+            setFlag.CommandText = "UPDATE Orders SET IsVoided=$v WHERE Id=$id";
+            setFlag.Parameters.AddWithValue("$v", voided ? 1 : 0);
+            setFlag.Parameters.AddWithValue("$id", orderId);
+            setFlag.ExecuteNonQuery();
+        }
+        tx.Commit();
+    }
+
+    public static void UpdatePaymentMethod(int orderId, string method)
+    {
+        using var conn = Database.Open();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "UPDATE Orders SET IsVoided=$v WHERE Id=$id";
-        cmd.Parameters.AddWithValue("$v", voided ? 1 : 0);
+        cmd.CommandText = "UPDATE Orders SET PaymentMethod=$pm WHERE Id=$id";
+        cmd.Parameters.AddWithValue("$pm", method ?? "Cash");
+        cmd.Parameters.AddWithValue("$id", orderId);
+        cmd.ExecuteNonQuery();
+    }
+
+    public static void UpdateIsParcel(int orderId, bool isParcel)
+    {
+        using var conn = Database.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE Orders SET IsParcel=$p WHERE Id=$id";
+        cmd.Parameters.AddWithValue("$p", isParcel ? 1 : 0);
         cmd.Parameters.AddWithValue("$id", orderId);
         cmd.ExecuteNonQuery();
     }

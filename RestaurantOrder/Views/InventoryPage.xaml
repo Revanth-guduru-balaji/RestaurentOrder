@@ -349,13 +349,15 @@
                                                         Background="{StaticResource WarnBgBrush}"
                                                         Visibility="{Binding LowBadgeVisibility}">
                                                     <TextBlock Text="LOW" FontSize="10" FontWeight="SemiBold"
-                                                               Foreground="{StaticResource WarnFgBrush}" />
+                                                               Foreground="{StaticResource WarnFgBrush}"
+                                                               VerticalAlignment="Center" HorizontalAlignment="Center" />
                                                 </Border>
                                                 <Border Style="{StaticResource InlineStatusBadge}"
                                                         Background="{StaticResource DangerBgBrush}"
                                                         Visibility="{Binding OutBadgeVisibility}">
                                                     <TextBlock Text="OUT" FontSize="10" FontWeight="SemiBold"
-                                                               Foreground="{StaticResource DangerFgBrush}" />
+                                                               Foreground="{StaticResource DangerFgBrush}"
+                                                               VerticalAlignment="Center" HorizontalAlignment="Center" />
                                                 </Border>
                                             </StackPanel>
                                             <TextBlock Text="{Binding MetaText}" FontSize="11"
@@ -367,7 +369,8 @@
                                         <Border Grid.Column="2" Style="{StaticResource CategoryTagPill}">
                                             <TextBlock Text="{Binding Category}" FontSize="11"
                                                        FontWeight="Medium"
-                                                       Foreground="{StaticResource BrandSubtleTextDarkBrush}" />
+                                                       Foreground="{StaticResource BrandSubtleTextDarkBrush}"
+                                                       VerticalAlignment="Center" HorizontalAlignment="Center" />
                                         </Border>
 
                                         <!-- price -->
@@ -377,20 +380,19 @@
                                                    HorizontalAlignment="Right" VerticalAlignment="Center"
                                                    Margin="0,0,14,0" />
 
-                                        <!-- stock numbers (progress bar removed; just '12 / 50') -->
-                                        <StackPanel Grid.Column="4" VerticalAlignment="Center" Margin="0,0,8,0">
-                                            <Grid Visibility="{Binding StockLineVisibility}">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="{Binding AvailQtyText}"
-                                                           FontWeight="SemiBold" FontSize="13"
-                                                           Foreground="{Binding QtyForeground}" />
-                                                <TextBlock Grid.Column="1" Text="{Binding EstQtyText}"
-                                                           FontSize="13"
-                                                           Foreground="{StaticResource BrandSubtleTextBrush}" />
-                                            </Grid>
+                                        <!-- stock numbers (progress bar removed; '12 / 50' tight) -->
+                                        <StackPanel Grid.Column="4" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                    Orientation="Horizontal" HorizontalAlignment="Left">
+                                            <StackPanel Orientation="Horizontal" Visibility="{Binding StockLineVisibility}">
+                                                <TextBlock Text="{Binding AvailQtyText}"
+                                                           FontWeight="SemiBold" FontSize="14"
+                                                           Foreground="{Binding QtyForeground}"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding EstQtyText}"
+                                                           FontSize="14"
+                                                           Foreground="{StaticResource BrandSubtleTextBrush}"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
                                             <Border Style="{StaticResource StockBarTrack}"
                                                     Margin="0,5,0,0"
                                                     Visibility="Collapsed">

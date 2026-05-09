@@ -510,7 +510,7 @@
                         <StackPanel TextElement.FontFamily="Cascadia Mono, Consolas"
                                     TextElement.FontSize="11"
                                     TextElement.Foreground="#FF1F2937">
-                            <TextBlock x:Name="RcShopName" Text="ARAYA VYSYA SSV"
+                            <TextBlock x:Name="RcShopName" Text="ARYA VYSYA SSV"
                                        FontWeight="Bold" FontSize="13"
                                        HorizontalAlignment="Center" />
                             <TextBlock x:Name="RcLine2" Text="Pure-Veg Tiffin · South Indian"

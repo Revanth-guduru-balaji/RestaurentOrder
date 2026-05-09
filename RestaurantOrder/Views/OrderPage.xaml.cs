@@ -236,6 +236,7 @@ public partial class OrderPage : UserControl
         finally { _suppressDraftSave = false; }
         RenderMenu();
         RenderCart();
+        RebuildDraftTabs(); // tab counts may have changed after _cart was rewritten
     }
 
     /// Schedule a debounced persist of the active draft. Called on every
@@ -413,11 +414,12 @@ public partial class OrderPage : UserControl
 
         foreach (var c in cats)
         {
-            int n = c == "All" ? _allItems.Count : counts.TryGetValue(c, out var v) ? v : 0;
+            // Counts beside category names are visual noise during a busy
+            // service — drop them, just show the category label.
             var btn = new Button
             {
                 Style = (Style)Application.Current.Resources["CategoryChip"],
-                Content = $"{c} · {n}",
+                Content = c,
                 Tag = c,
                 Margin = new Thickness(0, 0, 8, 8),
             };
@@ -516,8 +518,11 @@ public partial class OrderPage : UserControl
         });
         root.Children.Add(stack);
 
-        // Selected count badge (top-left) — visible when item is already in cart.
-        // Round badge: width = height so the radius produces a perfect circle.
+        // Selected count badge — top-RIGHT corner so it never covers the
+        // item name. Round badge: width = height so the radius is a perfect
+        // circle. When a stock badge would also show, the count badge wins
+        // the top-right slot and the stock badge is suppressed (cashier
+        // already added the item; remaining stock is in the cart's qty box).
         if (inCart)
         {
             var bdg = new Border
@@ -526,9 +531,9 @@ public partial class OrderPage : UserControl
                 CornerRadius = new CornerRadius(11),
                 Width = 22,
                 Height = 22,
-                HorizontalAlignment = HorizontalAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(-4, -4, 0, 0),
+                Margin = new Thickness(0, -4, -4, 0),
             };
             bdg.Child = new TextBlock
             {
@@ -541,8 +546,7 @@ public partial class OrderPage : UserControl
             };
             root.Children.Add(bdg);
         }
-
-        if (showBadge)
+        else if (showBadge)
         {
             // Stock badge: pill shape (radius = height/2 = 11 for 22px height).
             var badge = new Border
@@ -562,7 +566,8 @@ public partial class OrderPage : UserControl
                 Text = soldOut ? "Sold out" : $"{item.AvailableQty} left",
                 Foreground = Brushes.White,
                 FontSize = 10,
-                FontWeight = FontWeights.SemiBold
+                FontWeight = FontWeights.SemiBold,
+                VerticalAlignment = VerticalAlignment.Center
             };
             root.Children.Add(badge);
         }
@@ -830,11 +835,15 @@ public partial class OrderPage : UserControl
             Height = 28,
             HorizontalAlignment = HorizontalAlignment.Right,
             ToolTip = "Remove from order",
+            // Plain Unicode ✕ renders cleanly everywhere; the Segoe MDL2
+            // glyph fell back to a tofu box on some POS hardware.
             Content = new TextBlock
             {
-                Text = "",
-                FontFamily = (FontFamily)Application.Current.Resources["BrandIconFontFamily"],
-                FontSize = 12
+                Text = "✕",
+                FontSize = 14,
+                FontWeight = FontWeights.Bold,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center
             }
         };
         del.Click += (_, _) =>

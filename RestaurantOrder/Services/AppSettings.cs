@@ -6,7 +6,7 @@ namespace RestaurantOrder.Services;
 
 public class AppSettings
 {
-    public string ShopName { get; set; } = "Araya Vysya SSV";
+    public string ShopName { get; set; } = "Arya Vysya SSV";
     public string ShopLine2 { get; set; } = "Restaurant";
     public string ShopAddress { get; set; } = "";
     public string DefaultPrinterName { get; set; } = "";
@@ -62,7 +62,14 @@ public class AppSettings
             {
                 var json = File.ReadAllText(SettingsPath);
                 var s = JsonSerializer.Deserialize<AppSettings>(json);
-                if (s != null) return s;
+                if (s != null)
+                {
+                    // One-time migration: fix the long-running typo so existing
+                    // saved settings.json files don't keep printing 'Araya'.
+                    if (string.Equals(s.ShopName, "Araya Vysya SSV", StringComparison.OrdinalIgnoreCase))
+                        s.ShopName = "Arya Vysya SSV";
+                    return s;
+                }
             }
         }
         catch { }

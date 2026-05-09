@@ -173,6 +173,18 @@ public static class ReceiptPrinter
         }
         if (header.Inlines.Count > 0) doc.Blocks.Add(header);
 
+        // Big, centred order number — readable across the counter so the
+        // cashier can call out '# 00012 ready' from the bill.
+        var idLine = new Paragraph
+        {
+            TextAlignment = TextAlignment.Center,
+            FontWeight = FontWeights.Bold,
+            FontSize = 22,
+            Margin = new Thickness(0, 4, 0, 2)
+        };
+        idLine.Inlines.Add(new Run($"# {order.Id:D5}"));
+        doc.Blocks.Add(idLine);
+
         // Parcel banner — bold, centred, easy to spot when bagging
         if (order.IsParcel)
         {
@@ -188,15 +200,14 @@ public static class ReceiptPrinter
 
         doc.Blocks.Add(MakeRule(compact));
 
-        // Compact meta row: Order # + date on one line; customer on next only if present
+        // Compact meta row: date + payment (order # is now in the big header above)
         var meta = new Paragraph
         {
             Margin = new Thickness(0, 0, 0, compact ? 2 : 4),
-            FontSize = subSize
+            FontSize = subSize,
+            TextAlignment = TextAlignment.Center
         };
-        meta.Inlines.Add(new Run($"#{order.Id:D5}") { FontWeight = FontWeights.Bold });
-        meta.Inlines.Add(new Run($"   {order.CreatedAt:dd-MMM-yy HH:mm}"));
-        meta.Inlines.Add(new Run($"   {order.PaymentMethod}"));
+        meta.Inlines.Add(new Run($"{order.CreatedAt:dd-MMM-yy HH:mm}   ·   {order.PaymentMethod}"));
         if (!string.IsNullOrWhiteSpace(order.CustomerName))
         {
             meta.Inlines.Add(new LineBreak());

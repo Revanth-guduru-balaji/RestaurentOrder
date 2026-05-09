@@ -25,6 +25,7 @@ public partial class OrderHistoryPage : UserControl
     private readonly ObservableCollection<object> _items = new();
     private bool _filterWalkIn;
     private bool _filterParcel;
+    private bool _datesInitialized;
 
     public OrderHistoryPage()
     {
@@ -32,10 +33,17 @@ public partial class OrderHistoryPage : UserControl
         OrdersList.ItemsSource = _items;
         Loaded += (_, _) =>
         {
-            _suppressReload = true;
-            ToDate.SelectedDate = DateTime.Today;
-            FromDate.SelectedDate = DateTime.Today.AddDays(-6);
-            _suppressReload = false;
+            // Initialize the date range only once. Page is cached across nav,
+            // so subsequent visits keep whatever range the cashier last picked
+            // — and the segment radio + dates stay in sync.
+            if (!_datesInitialized)
+            {
+                _suppressReload = true;
+                ToDate.SelectedDate = DateTime.Today;
+                FromDate.SelectedDate = DateTime.Today.AddDays(-6);
+                _suppressReload = false;
+                _datesInitialized = true;
+            }
             Reload();
         };
         // F4 = focus search, F2 = reprint selected
@@ -292,7 +300,81 @@ public partial class OrderHistoryPage : UserControl
         DetailMetaPanel.Children.Clear();
         AddMeta("Date", order.CreatedAt.ToString("ddd, dd MMM · hh:mm tt"));
         AddMeta("Customer", string.IsNullOrWhiteSpace(order.CustomerName) ? "Walk-in" : order.CustomerName!);
-        AddMeta("Pay", order.PaymentMethod);
+
+        // Editable Payment dropdown — committed to DB on selection change.
+        var payRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 14, 4) };
+        payRow.Children.Add(new TextBlock
+        {
+            Text = "Pay",
+            FontSize = 12,
+            Foreground = (Brush)Application.Current.Resources["BrandSubtleTextBrush"],
+            Margin = new Thickness(0, 0, 6, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        var payCombo = new ComboBox { MinWidth = 80, Tag = order };
+        foreach (var m in new[] { "Cash", "UPI", "Card" }) payCombo.Items.Add(m);
+        payCombo.SelectedItem = string.IsNullOrWhiteSpace(order.PaymentMethod)
+            ? "Cash" : order.PaymentMethod;
+        payCombo.SelectionChanged += PaymentMethod_Changed;
+        payRow.Children.Add(payCombo);
+        DetailMetaPanel.Children.Add(payRow);
+
+        // Editable Walk-in / Parcel dropdown.
+        var channelRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 14, 4) };
+        channelRow.Children.Add(new TextBlock
+        {
+            Text = "Channel",
+            FontSize = 12,
+            Foreground = (Brush)Application.Current.Resources["BrandSubtleTextBrush"],
+            Margin = new Thickness(0, 0, 6, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        var channelCombo = new ComboBox { MinWidth = 90, Tag = order };
+        channelCombo.Items.Add("Walk-in");
+        channelCombo.Items.Add("Parcel");
+        channelCombo.SelectedItem = order.IsParcel ? "Parcel" : "Walk-in";
+        channelCombo.SelectionChanged += Channel_Changed;
+        channelRow.Children.Add(channelCombo);
+        DetailMetaPanel.Children.Add(channelRow);
+    }
+
+    private void PaymentMethod_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is not ComboBox cb || cb.Tag is not Order order) return;
+        var newMethod = cb.SelectedItem as string ?? "Cash";
+        if (order.PaymentMethod == newMethod) return;
+        try
+        {
+            OrderRepository.UpdatePaymentMethod(order.Id, newMethod);
+            order.PaymentMethod = newMethod;
+            // Refresh the row's payment chip
+            foreach (var row in _items.OfType<OrderRowVm>().Where(r => r.Source.Id == order.Id))
+                row.Refresh();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Update failed: " + ex.Message, "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void Channel_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is not ComboBox cb || cb.Tag is not Order order) return;
+        bool newIsParcel = (cb.SelectedItem as string) == "Parcel";
+        if (order.IsParcel == newIsParcel) return;
+        try
+        {
+            OrderRepository.UpdateIsParcel(order.Id, newIsParcel);
+            order.IsParcel = newIsParcel;
+            foreach (var row in _items.OfType<OrderRowVm>().Where(r => r.Source.Id == order.Id))
+                row.Refresh();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Update failed: " + ex.Message, "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void AddMeta(string key, string value)
@@ -618,6 +700,13 @@ public class OrderRowVm : System.ComponentModel.INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(RowBackground)));
         PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(RowPadding)));
+        PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(PaymentMethodUpper)));
+        PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(PayBg)));
+        PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(PayFg)));
+        PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(ParcelBadgeVisibility)));
+        PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(VoidedBadgeVisibility)));
+        PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsVoided)));
+        PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(RowItemOpacity)));
     }
 
     private static (Brush bg, Brush fg) PaymentColors(string? method) => method?.Trim().ToLowerInvariant() switch

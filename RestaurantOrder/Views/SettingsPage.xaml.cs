@@ -98,7 +98,7 @@ public partial class SettingsPage : UserControl
     private void RefreshPreview()
     {
         var name = (ShopNameBox.Text ?? "").Trim();
-        RcShopName.Text = string.IsNullOrEmpty(name) ? "ARAYA VYSYA SSV" : name.ToUpperInvariant();
+        RcShopName.Text = string.IsNullOrEmpty(name) ? "ARYA VYSYA SSV" : name.ToUpperInvariant();
 
         var line2 = (ShopLine2Box.Text ?? "").Trim();
         RcLine2.Visibility = string.IsNullOrEmpty(line2) ? Visibility.Collapsed : Visibility.Visible;

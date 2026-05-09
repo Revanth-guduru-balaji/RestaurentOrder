@@ -119,7 +119,7 @@
                     <StackPanel x:Name="CartList" />
                 </ScrollViewer>
 
-                <Border Grid.Row="2" Padding="20,16" Background="#FFF9FAFB"
+                <Border Grid.Row="2" Padding="18,12" Background="#FFF9FAFB"
                         BorderBrush="{StaticResource BrandBorderBrush}"
                         BorderThickness="0,1,0,0">
                     <StackPanel>
@@ -201,20 +201,12 @@
                                  Margin="0,0,0,8"
                                  TextChanged="CustomerName_Changed" />
 
-                        <Border Background="#FFFFF7ED"
-                                BorderBrush="#FFFCD34D" BorderThickness="1"
-                                CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
-                            <CheckBox x:Name="ParcelBox" Cursor="Hand"
-                                      Checked="Parcel_Changed" Unchecked="Parcel_Changed">
-                                <StackPanel>
-                                    <TextBlock Text="Parcel order" FontWeight="SemiBold" FontSize="14"
-                                               Foreground="{StaticResource BrandTextBrush}" />
-                                    <TextBlock Text="Marks bill &amp; kitchen ticket as PARCEL"
-                                               FontSize="11"
-                                               Foreground="{StaticResource BrandSubtleTextBrush}" />
-                                </StackPanel>
-                            </CheckBox>
-                        </Border>
+                        <CheckBox x:Name="ParcelBox" Cursor="Hand"
+                                  Margin="0,0,0,8"
+                                  Checked="Parcel_Changed" Unchecked="Parcel_Changed"
+                                  Content="Parcel order"
+                                  FontWeight="SemiBold" FontSize="14"
+                                  Foreground="{StaticResource BrandTextBrush}" />
 
                         <Grid Margin="0,0,0,14">
                             <Grid.ColumnDefinitions>

@@ -33,6 +33,23 @@ public static class MenuRepository
         return rdr.Read() ? Read(rdr) : null;
     }
 
+    /// Case-insensitive name lookup. excludeId lets the caller skip the
+    /// row being edited so renaming an item to its existing name isn't a
+    /// false positive.
+    public static MenuItem? FindByName(string name, int excludeId = 0)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        using var conn = Database.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $@"SELECT {SelectColumns} FROM MenuItems
+                             WHERE LOWER(Name) = LOWER($n) AND Id <> $id
+                             LIMIT 1";
+        cmd.Parameters.AddWithValue("$n", name.Trim());
+        cmd.Parameters.AddWithValue("$id", excludeId);
+        using var rdr = cmd.ExecuteReader();
+        return rdr.Read() ? Read(rdr) : null;
+    }
+
     private static MenuItem Read(Microsoft.Data.Sqlite.SqliteDataReader rdr) => new MenuItem
     {
         Id = rdr.GetInt32(0),
