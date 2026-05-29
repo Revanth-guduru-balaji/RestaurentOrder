@@ -28,6 +28,12 @@ public partial class OrderHistoryPage : UserControl
     private bool _filterParcel;
     private bool _datesInitialized;
 
+    // Debounce search so a DB JOIN doesn't run on every keystroke.
+    private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+    // Bumped on every reload so a slow background fetch can't overwrite the UI
+    // with stale results after a newer reload has started.
+    private int _reloadGen;
+
     /// 30-minute time options for the From/To time combos. The trailing
     /// 23:59 value lets the cashier include the entire last day without
     /// resorting to free-text entry.
@@ -41,6 +47,8 @@ public partial class OrderHistoryPage : UserControl
     {
         InitializeComponent();
         OrdersList.ItemsSource = _items;
+        _searchTimer.Tick += (_, _) => { _searchTimer.Stop(); Reload(); };
+        Unloaded += (_, _) => _searchTimer.Stop();
         Loaded += (_, _) =>
         {
             // Initialize once; page is cached across nav.
@@ -84,7 +92,12 @@ public partial class OrderHistoryPage : UserControl
         Reload();
     }
 
-    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => Reload();
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_suppressReload) return;
+        _searchTimer.Stop();
+        _searchTimer.Start();
+    }
 
     private void TimeCombo_Changed(object sender, SelectionChangedEventArgs e)
     {
@@ -176,7 +189,10 @@ public partial class OrderHistoryPage : UserControl
     // -----------------------------------------------------------------
     // Reload pipeline: fetch -> KPIs -> sparkline -> list (with day dividers)
     // -----------------------------------------------------------------
-    private void Reload()
+    /// The single source of truth for the [from, to) window selected by the
+    /// date pickers + time combos, including the 23:59 → end-of-day rule. Used
+    /// by both the orders list and the KPI panel so they can never disagree.
+    private (DateTime from, DateTime to) GetSelectedRange()
     {
         var fromDay = (FromDate.SelectedDate ?? DateTime.Today.AddDays(-6)).Date;
         var toDay = (ToDate.SelectedDate ?? DateTime.Today).Date;
@@ -185,20 +201,38 @@ public partial class OrderHistoryPage : UserControl
         var from = fromDay + fromTime;
         // To = end-of-day exclusive when no explicit time picked. 23:59 maps
         // to 23:59:59.999 so the last day's late orders are included.
-        DateTime to;
-        if (toTimeOpt.HasValue)
-        {
-            to = toTimeOpt.Value == new TimeSpan(23, 59, 0)
-                ? toDay.AddDays(1).AddTicks(-1)
-                : toDay + toTimeOpt.Value;
-        }
-        else
-        {
-            to = toDay.AddDays(1);
-        }
-        var search = (SearchBox.Text ?? "").Trim();
+        DateTime to = toTimeOpt.HasValue
+            ? (toTimeOpt.Value == new TimeSpan(23, 59, 0) ? toDay.AddDays(1).AddTicks(-1) : toDay + toTimeOpt.Value)
+            : toDay.AddDays(1);
+        return (from, to);
+    }
 
-        _orders = OrderRepository.GetBetween(from, to, search);
+    private void Reload() => _ = ReloadAsync();
+
+    // Fetches off the UI thread so switching to this tab (or typing in search)
+    // never freezes the window, even on a large history. A generation counter
+    // discards results from a reload that a newer one has already superseded.
+    private async Task ReloadAsync()
+    {
+        var (from, to) = GetSelectedRange();
+        var search = (SearchBox.Text ?? "").Trim();
+        int gen = ++_reloadGen;
+
+        List<Order> orders;
+        try
+        {
+            orders = await Task.Run(() => OrderRepository.GetBetween(from, to, search));
+        }
+        catch (Exception ex)
+        {
+            if (gen == _reloadGen)
+                MessageBox.Show("Couldn't load orders: " + ex.Message, "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+        if (gen != _reloadGen) return; // a newer reload superseded this one
+
+        _orders = orders;
 
         // Walk-in / Parcel chips: when both are off, show everything; when one
         // is on, narrow to that channel; when both are on, show both (i.e. all)
@@ -225,28 +259,15 @@ public partial class OrderHistoryPage : UserControl
         KpiOrdersSub.Text = voided > 0
             ? $"in selected range · {voided} voided"
             : "in selected range";
-        KpiRevenueValue.Text = "₹ " + revenue.ToString("N0", CultureInfo.InvariantCulture);
-        KpiRevenueSub.Text = $"₹ {avg:N0} avg";
+        // Route currency through the single Money formatter (en-IN grouping)
+        // instead of hand-built strings, so grouping is consistent across KPIs.
+        KpiRevenueValue.Text = Money.Format(revenue, withDecimals: false);
+        KpiRevenueSub.Text = $"{Money.Format(avg, withDecimals: false)} avg";
         KpiAvgValue.Text = Money.Format(avg);
         CountText.Text = $"{n} orders · {Money.Format(revenue)}";
 
         // Reprints KPI for the active range — same window as the orders list.
-        var fromDay = (FromDate.SelectedDate ?? DateTime.Today.AddDays(-6)).Date;
-        var toDay = (ToDate.SelectedDate ?? DateTime.Today).Date;
-        var fromTime = ParseTime(FromTimeCombo?.SelectedItem as string) ?? TimeSpan.Zero;
-        var toTimeOpt = ParseTime(ToTimeCombo?.SelectedItem as string);
-        var from = fromDay + fromTime;
-        DateTime to;
-        if (toTimeOpt.HasValue)
-        {
-            to = toTimeOpt.Value == new TimeSpan(23, 59, 0)
-                ? toDay.AddDays(1).AddTicks(-1)
-                : toDay + toTimeOpt.Value;
-        }
-        else
-        {
-            to = toDay.AddDays(1);
-        }
+        var (from, to) = GetSelectedRange();
         int reprints = OrderRepository.CountReprintsBetween(from, to);
         KpiReprintsValue.Text = reprints.ToString("N0", CultureInfo.InvariantCulture);
         KpiReprintsSub.Text = n > 0
@@ -391,9 +412,9 @@ public partial class OrderHistoryPage : UserControl
             VerticalAlignment = VerticalAlignment.Center
         });
         var payCombo = new ComboBox { MinWidth = 80, Tag = order };
-        foreach (var m in new[] { "Cash", "UPI", "Card" }) payCombo.Items.Add(m);
+        foreach (var m in PaymentMethods.All) payCombo.Items.Add(m);
         payCombo.SelectedItem = string.IsNullOrWhiteSpace(order.PaymentMethod)
-            ? "Cash" : order.PaymentMethod;
+            ? PaymentMethods.Cash : order.PaymentMethod;
         payCombo.SelectionChanged += PaymentMethod_Changed;
         payRow.Children.Add(payCombo);
         DetailMetaPanel.Children.Add(payRow);
@@ -409,9 +430,9 @@ public partial class OrderHistoryPage : UserControl
             VerticalAlignment = VerticalAlignment.Center
         });
         var channelCombo = new ComboBox { MinWidth = 90, Tag = order };
-        channelCombo.Items.Add("Walk-in");
-        channelCombo.Items.Add("Parcel");
-        channelCombo.SelectedItem = order.IsParcel ? "Parcel" : "Walk-in";
+        channelCombo.Items.Add(OrderChannels.WalkIn);
+        channelCombo.Items.Add(OrderChannels.Parcel);
+        channelCombo.SelectedItem = order.IsParcel ? OrderChannels.Parcel : OrderChannels.WalkIn;
         channelCombo.SelectionChanged += Channel_Changed;
         channelRow.Children.Add(channelCombo);
         DetailMetaPanel.Children.Add(channelRow);
@@ -440,7 +461,7 @@ public partial class OrderHistoryPage : UserControl
     private void Channel_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (sender is not ComboBox cb || cb.Tag is not Order order) return;
-        bool newIsParcel = (cb.SelectedItem as string) == "Parcel";
+        bool newIsParcel = (cb.SelectedItem as string) == OrderChannels.Parcel;
         if (order.IsParcel == newIsParcel) return;
         try
         {
@@ -619,7 +640,7 @@ public partial class OrderHistoryPage : UserControl
         if (order.Items.Count == 0) order.Items = OrderRepository.GetItems(order.Id);
         try
         {
-            if (ReceiptPrinter.PrintQuiet(order))
+            if (ReceiptPrinter.PrintQuiet(order).BillPrinted)
             {
                 OrderRepository.LogReprint(order.Id);
                 UpdateKpis();  // refresh reprints KPI
@@ -632,7 +653,7 @@ public partial class OrderHistoryPage : UserControl
         }
     }
 
-    private void VoidOrder_Click(object sender, RoutedEventArgs e)
+    private async void VoidOrder_Click(object sender, RoutedEventArgs e)
     {
         if (_selected == null) return;
         var order = _selected.Source;
@@ -647,9 +668,8 @@ public partial class OrderHistoryPage : UserControl
         try
         {
             OrderRepository.SetVoided(order.Id, !currentlyVoided);
-            order.IsVoided = !currentlyVoided;
-            Reload(); // refresh KPIs + list highlighting
-            SelectOrder(order.Id);
+            await ReloadAsync();      // refresh KPIs + list highlighting
+            SelectOrder(order.Id);    // re-select once the reload has finished
         }
         catch (Exception ex)
         {

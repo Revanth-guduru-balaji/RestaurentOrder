@@ -27,7 +27,7 @@ public static class DraftRepository
                     UpdatedAt = DateTime.ParseExact(rdr.GetString(2), Iso, CultureInfo.InvariantCulture),
                     CustomerName = rdr.IsDBNull(3) ? null : rdr.GetString(3),
                     PaymentMethod = rdr.GetString(4),
-                    DiscountAmount = (decimal)rdr.GetDouble(5),
+                    DiscountAmount = Database.ReadMoney(rdr.GetDouble(5)),
                     IsParcel = rdr.GetInt32(6) == 1,
                     Notes = rdr.IsDBNull(7) ? null : rdr.GetString(7),
                 });
@@ -54,7 +54,7 @@ public static class DraftRepository
                     DraftId = draftId,
                     MenuItemId = rdr.GetInt32(2),
                     MenuItemName = rdr.GetString(3),
-                    UnitPrice = (decimal)rdr.GetDouble(4),
+                    UnitPrice = Database.ReadMoney(rdr.GetDouble(4)),
                     Quantity = rdr.GetInt32(5),
                 });
             }

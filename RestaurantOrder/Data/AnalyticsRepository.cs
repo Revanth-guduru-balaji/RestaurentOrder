@@ -51,7 +51,7 @@ public static class AnalyticsRepository
         cmd.Parameters.AddWithValue("$t", to.ToString(Iso, CultureInfo.InvariantCulture));
         using var rdr = cmd.ExecuteReader();
         rdr.Read();
-        var rev = (decimal)rdr.GetDouble(0);
+        var rev = Database.ReadMoney(rdr.GetDouble(0));
         var cnt = rdr.GetInt32(1);
         return (rev, cnt, cnt == 0 ? 0 : rev / cnt);
     }
@@ -70,7 +70,7 @@ public static class AnalyticsRepository
         while (rdr.Read())
         {
             var d = DateTime.ParseExact(rdr.GetString(0), "yyyy-MM-dd", CultureInfo.InvariantCulture);
-            dict[d] = new DailyTotal { Day = d, Revenue = (decimal)rdr.GetDouble(1), OrderCount = rdr.GetInt32(2) };
+            dict[d] = new DailyTotal { Day = d, Revenue = Database.ReadMoney(rdr.GetDouble(1)), OrderCount = rdr.GetInt32(2) };
         }
         var list = new List<DailyTotal>();
         for (var d = from.Date; d < to.Date; d = d.AddDays(1))
@@ -82,7 +82,13 @@ public static class AnalyticsRepository
     {
         using var conn = Database.Open();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = $@"SELECT oi.MenuItemName, SUM(oi.Quantity), SUM(oi.UnitPrice * oi.Quantity)
+        // Revenue is each line's gross scaled by the order's net/gross ratio
+        // (Total/Subtotal), so per-item revenue reconciles with headline revenue
+        // even when orders carry tax/discount/rounding. Legacy rows with no stored
+        // Subtotal fall back to gross (ratio 1).
+        cmd.CommandText = $@"SELECT oi.MenuItemName, SUM(oi.Quantity),
+                                    SUM((oi.UnitPrice * oi.Quantity) *
+                                        (CASE WHEN o.Subtotal > 0 THEN o.Total / o.Subtotal ELSE 1 END))
                              FROM OrderItems oi
                              INNER JOIN Orders o ON o.Id = oi.OrderId
                              WHERE o.CreatedAt >= $f AND o.CreatedAt < $t AND o.{VoidFilter}
@@ -95,7 +101,7 @@ public static class AnalyticsRepository
         using var rdr = cmd.ExecuteReader();
         var list = new List<TopItem>();
         while (rdr.Read())
-            list.Add(new TopItem { Name = rdr.GetString(0), Quantity = rdr.GetInt32(1), Revenue = (decimal)rdr.GetDouble(2) });
+            list.Add(new TopItem { Name = rdr.GetString(0), Quantity = rdr.GetInt32(1), Revenue = Database.ReadMoney(rdr.GetDouble(2)) });
         return list;
     }
 
@@ -103,8 +109,12 @@ public static class AnalyticsRepository
     {
         using var conn = Database.Open();
         using var cmd = conn.CreateCommand();
+        // Net-allocated revenue (see TopItems) so category totals reconcile with
+        // headline revenue rather than summing gross line amounts.
         cmd.CommandText = $@"SELECT IFNULL(NULLIF(mi.Category,''),'(uncategorized)'),
-                                    SUM(oi.UnitPrice * oi.Quantity), SUM(oi.Quantity)
+                                    SUM((oi.UnitPrice * oi.Quantity) *
+                                        (CASE WHEN o.Subtotal > 0 THEN o.Total / o.Subtotal ELSE 1 END)),
+                                    SUM(oi.Quantity)
                              FROM OrderItems oi
                              INNER JOIN Orders o ON o.Id = oi.OrderId
                              LEFT JOIN MenuItems mi ON mi.Id = oi.MenuItemId
@@ -116,8 +126,30 @@ public static class AnalyticsRepository
         using var rdr = cmd.ExecuteReader();
         var list = new List<CategoryShare>();
         while (rdr.Read())
-            list.Add(new CategoryShare { Category = rdr.GetString(0), Revenue = (decimal)rdr.GetDouble(1), Quantity = rdr.GetInt32(2) });
+            list.Add(new CategoryShare { Category = rdr.GetString(0), Revenue = Database.ReadMoney(rdr.GetDouble(1)), Quantity = rdr.GetInt32(2) });
         return list;
+    }
+
+    /// Revenue per calendar month (index 0 = Jan) for a year, in ONE query —
+    /// replaces 12 separate Summary round trips.
+    public static decimal[] MonthlyRevenue(int year)
+    {
+        using var conn = Database.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $@"SELECT CAST(substr(CreatedAt, 6, 2) AS INTEGER) AS m, SUM(Total)
+                             FROM Orders
+                             WHERE CreatedAt >= $f AND CreatedAt < $t AND {VoidFilter}
+                             GROUP BY m";
+        cmd.Parameters.AddWithValue("$f", new DateTime(year, 1, 1).ToString(Iso, CultureInfo.InvariantCulture));
+        cmd.Parameters.AddWithValue("$t", new DateTime(year + 1, 1, 1).ToString(Iso, CultureInfo.InvariantCulture));
+        var result = new decimal[12];
+        using var rdr = cmd.ExecuteReader();
+        while (rdr.Read())
+        {
+            int m = rdr.GetInt32(0); // 1..12
+            if (m >= 1 && m <= 12) result[m - 1] = Database.ReadMoney(rdr.GetDouble(1));
+        }
+        return result;
     }
 
     public static List<HourlyBucket> HourlyBuckets(DateTime from, DateTime to)
@@ -133,7 +165,7 @@ public static class AnalyticsRepository
         using var rdr = cmd.ExecuteReader();
         var dict = new Dictionary<int, HourlyBucket>();
         while (rdr.Read())
-            dict[rdr.GetInt32(0)] = new HourlyBucket { Hour = rdr.GetInt32(0), OrderCount = rdr.GetInt32(1), Revenue = (decimal)rdr.GetDouble(2) };
+            dict[rdr.GetInt32(0)] = new HourlyBucket { Hour = rdr.GetInt32(0), OrderCount = rdr.GetInt32(1), Revenue = Database.ReadMoney(rdr.GetDouble(2)) };
         var list = new List<HourlyBucket>();
         for (int h = 0; h < 24; h++)
             list.Add(dict.TryGetValue(h, out var v) ? v : new HourlyBucket { Hour = h });

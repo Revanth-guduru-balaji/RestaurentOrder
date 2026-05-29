@@ -1,12 +1,24 @@
 using System;
 using System.IO;
 using System.Printing;
+using System.Threading;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
 using RestaurantOrder.Data;
 
 namespace RestaurantOrder.Services;
+
+/// Outcome of a print attempt. Lets the caller tell "cancelled at the chooser"
+/// from "the bill printed but the kitchen copy failed" — the latter is an
+/// operational hazard that must be surfaced, not swallowed.
+public readonly record struct PrintResult(bool BillPrinted, bool KitchenRequested, bool KitchenPrinted, string? Error)
+{
+    public static PrintResult Cancelled => new(false, false, false, null);
+    public static PrintResult Failed(string message) => new(false, false, false, message);
+    /// Bill printed but a requested kitchen ticket did not.
+    public bool KitchenFailed => BillPrinted && KitchenRequested && !KitchenPrinted;
+}
 
 public static class ReceiptPrinter
 {
@@ -16,73 +28,123 @@ public static class ReceiptPrinter
     private static readonly FontFamily ReceiptFont =
         new FontFamily("Segoe UI, Roboto, Arial, sans-serif");
 
-    /// Print using saved default printer. Prompts only if none saved or it's gone.
-    /// Returns true if the customer bill was sent to a printer.
-    /// printKitchen=true fires a second kitchen ticket. Reprints / test prints
-    /// must pass false — the kitchen got their copy at order time.
-    public static bool PrintQuiet(Order order, bool printKitchen = false)
+    /// Print to the saved default printer WITHOUT blocking the UI thread.
+    /// The bill (and optional kitchen ticket) are spooled on a background STA
+    /// thread so a slow / offline thermal printer can never freeze the POS.
+    /// onDone is always invoked back on the UI thread with the outcome.
+    /// printKitchen=true also fires the kitchen ticket (order time only).
+    public static void PrintQuietAsync(Order order, bool printKitchen, Action<PrintResult> onDone)
+    {
+        var s = AppSettings.Current;
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+
+        void Deliver(PrintResult r)
+        {
+            if (dispatcher != null && !dispatcher.CheckAccess())
+                dispatcher.BeginInvoke(new Action(() => onDone(r)));
+            else
+                onDone(r);
+        }
+
+        // No saved printer yet → the chooser is modal UI and must run on the UI
+        // thread. Rare (first run only); do it inline.
+        if (string.IsNullOrWhiteSpace(s.DefaultPrinterName))
+        {
+            Deliver(PrintWithDialog(order, printKitchen));
+            return;
+        }
+
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var queue = TryFindSavedQueue(s.DefaultPrinterName);
+                if (queue == null)
+                {
+                    // Saved printer vanished — fall back to the chooser on the UI thread.
+                    if (dispatcher != null)
+                        dispatcher.BeginInvoke(new Action(() => onDone(PrintWithDialog(order, printKitchen))));
+                    else
+                        onDone(PrintWithDialog(order, printKitchen));
+                    return;
+                }
+                var dlg = new System.Windows.Controls.PrintDialog { PrintQueue = queue };
+                Deliver(PrintCore(order, printKitchen, dlg));
+            }
+            catch (Exception ex)
+            {
+                RestaurantOrder.App.Log("Receipt print", ex);
+                Deliver(PrintResult.Failed(ex.Message));
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.IsBackground = true;
+        thread.Start();
+    }
+
+    /// Synchronous print to the saved default printer; prompts only if none is
+    /// saved or it's gone. Used by occasional user-initiated prints (reprint,
+    /// test print) where blocking briefly is acceptable.
+    public static PrintResult PrintQuiet(Order order, bool printKitchen = false)
     {
         var s = AppSettings.Current;
         var dlg = new System.Windows.Controls.PrintDialog();
-        PrintQueue? queue = TryFindSavedQueue(s.DefaultPrinterName);
-
+        var queue = TryFindSavedQueue(s.DefaultPrinterName);
         if (queue == null)
         {
-            if (dlg.ShowDialog() != true) return false;
+            if (dlg.ShowDialog() != true) return PrintResult.Cancelled;
             s.DefaultPrinterName = dlg.PrintQueue?.FullName ?? "";
             try { s.Save(); } catch { }
-            queue = dlg.PrintQueue;
+            if (dlg.PrintQueue == null) return PrintResult.Cancelled;
         }
         else
         {
             dlg.PrintQueue = queue;
         }
-
-        if (queue == null) return false;
-        var width = ResolveReceiptWidth(dlg.PrintableAreaWidth);
-        var doc = BuildDocument(order, width, s.CompactReceipt);
-        dlg.PrintDocument(((IDocumentPaginatorSource)doc).DocumentPaginator, $"Order #{order.Id:D5}");
-
-        if (printKitchen)
-        {
-            // Kitchen ticket failure must not bubble up — the customer bill
-            // already printed and the order is saved. Worst case the kitchen
-            // ticket needs a manual reprint, but we don't want to confuse the
-            // cashier with a "print failed" toast on a successful customer print.
-            try
-            {
-                var kitchen = BuildKitchenTicket(order, width);
-                dlg.PrintDocument(((IDocumentPaginatorSource)kitchen).DocumentPaginator, $"Kitchen #{order.Id:D5}");
-            }
-            catch { }
-        }
-        return true;
+        return PrintCore(order, printKitchen, dlg);
     }
 
     /// Always show the printer chooser (used for "change printer" or first-run flow).
-    public static bool PrintWithDialog(Order order, bool printKitchen = false)
+    public static PrintResult PrintWithDialog(Order order, bool printKitchen = false)
     {
         var s = AppSettings.Current;
         var dlg = new System.Windows.Controls.PrintDialog();
-        if (dlg.ShowDialog() != true) return false;
+        if (dlg.ShowDialog() != true) return PrintResult.Cancelled;
 
         s.DefaultPrinterName = dlg.PrintQueue?.FullName ?? s.DefaultPrinterName;
         try { s.Save(); } catch { }
+        return PrintCore(order, printKitchen, dlg);
+    }
 
+    // Spools the bill on whatever thread we're on (must be STA), then the
+    // optional kitchen ticket. Builds documents from order data only (no UI
+    // resources) so it is safe on a background STA thread.
+    private static PrintResult PrintCore(Order order, bool printKitchen, System.Windows.Controls.PrintDialog dlg)
+    {
         var width = ResolveReceiptWidth(dlg.PrintableAreaWidth);
-        var doc = BuildDocument(order, width, s.CompactReceipt);
+        var doc = BuildDocument(order, width, AppSettings.Current.CompactReceipt);
         dlg.PrintDocument(((IDocumentPaginatorSource)doc).DocumentPaginator, $"Order #{order.Id:D5}");
 
-        if (printKitchen)
+        bool kitchenPrinted = false;
+        if (printKitchen) kitchenPrinted = TryPrintKitchen(dlg, order, width);
+        return new PrintResult(BillPrinted: true, KitchenRequested: printKitchen, KitchenPrinted: kitchenPrinted, Error: null);
+    }
+
+    private static bool TryPrintKitchen(System.Windows.Controls.PrintDialog dlg, Order order, double width)
+    {
+        try
         {
-            try
-            {
-                var kitchen = BuildKitchenTicket(order, width);
-                dlg.PrintDocument(((IDocumentPaginatorSource)kitchen).DocumentPaginator, $"Kitchen #{order.Id:D5}");
-            }
-            catch { }
+            var kitchen = BuildKitchenTicket(order, width);
+            dlg.PrintDocument(((IDocumentPaginatorSource)kitchen).DocumentPaginator, $"Kitchen #{order.Id:D5}");
+            return true;
         }
-        return true;
+        catch (Exception ex)
+        {
+            // No longer silent: a missing kitchen ticket means food doesn't get
+            // cooked, so leave a breadcrumb. The caller surfaces KitchenFailed.
+            RestaurantOrder.App.Log("Kitchen ticket print", ex);
+            return false;
+        }
     }
 
     public static FlowDocument BuildPreview(Order order, double width = 320)
@@ -277,7 +339,11 @@ public static class ReceiptPrinter
             TextAlignment = TextAlignment.Right,
             Margin = new Thickness(0)
         };
-        totals.Inlines.Add(new Run($"Items: {totalQty}    Total: {Money.Format(order.Total > 0 ? order.Total : total)}"));
+        // Print the stored Total verbatim for any order that has a breakdown
+        // (Subtotal>0), so a legitimately-zero total (e.g. a 100% comp) prints as
+        // 0 rather than falling back to the gross subtotal. Only truly legacy rows
+        // (no stored Subtotal) fall back to the recomputed line sum.
+        totals.Inlines.Add(new Run($"Items: {totalQty}    Total: {Money.Format(order.Subtotal > 0m ? order.Total : total)}"));
         doc.Blocks.Add(totals);
 
         if (!string.IsNullOrWhiteSpace(order.Notes))

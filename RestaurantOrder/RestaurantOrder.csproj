@@ -6,14 +6,25 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <ApplicationIcon></ApplicationIcon>
+    <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyName>RestaurantOrder</AssemblyName>
     <RootNamespace>RestaurantOrder</RootNamespace>
-    <LangVersion>latest</LangVersion>
+    <!-- Pin the language version to the net8.0 default so the build is
+         reproducible regardless of which SDK happens to be installed. -->
+    <LangVersion>12.0</LangVersion>
+
+    <!-- Identity stamped into the published exe (visible in Explorer file
+         properties) and logged in crash.log for support triage. -->
+    <Version>1.1.0</Version>
+    <FileVersion>1.1.0.0</FileVersion>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <Company>Arya Vysya SSV</Company>
+    <Product>Restaurant Manager</Product>
+    <Copyright>© Arya Vysya SSV</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ClosedXML" Version="0.104.2" />
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
     <PackageReference Include="ModernWpfUI" Version="0.9.6" />
   </ItemGroup>

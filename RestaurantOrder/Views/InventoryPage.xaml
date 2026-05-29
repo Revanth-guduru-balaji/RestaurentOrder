@@ -103,6 +103,12 @@
                         <TextBlock Text="Import Excel" />
                     </StackPanel>
                 </Button>
+                <Button Style="{StaticResource GhostButton}" Margin="0,0,8,0" Click="ExportExcel_Click"
+                        ToolTip="Export the current inventory to an Excel file">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Export Excel" />
+                    </StackPanel>
+                </Button>
                 <Button Style="{StaticResource PrimaryButton}" Click="AddItem_Click">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Style="{StaticResource IconGlyphSmall}" Text="" Margin="0,0,6,0"

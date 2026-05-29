@@ -146,7 +146,7 @@ public partial class SettingsPage : UserControl
             };
             var sent = ReceiptPrinter.PrintQuiet(sample);
             var s = AppSettings.Current;
-            PrinterHint.Text = sent
+            PrinterHint.Text = sent.BillPrinted
                 ? "Test sent to " + (string.IsNullOrEmpty(s.DefaultPrinterName) ? "selected printer" : s.DefaultPrinterName)
                 : "Test print cancelled.";
         }

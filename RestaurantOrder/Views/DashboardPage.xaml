@@ -66,8 +66,18 @@
                             <RadioButton Style="{DynamicResource SegmentRadio}" Content="Week" Tag="Week" Click="Range_Click" />
                             <RadioButton Style="{DynamicResource SegmentRadio}" Content="Month" Tag="Month" Click="Range_Click" />
                             <RadioButton Style="{DynamicResource SegmentRadio}" Content="Year" Tag="Year" Click="Range_Click" />
+                            <RadioButton x:Name="RangeCustom" Style="{DynamicResource SegmentRadio}" Content="Custom" Tag="Custom" Click="Range_Click" />
                         </StackPanel>
                     </Border>
+                    <!-- Custom from–to range. Picking a date switches the view to Custom. -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <DatePicker x:Name="DashFromDate" Width="125" SelectedDateChanged="DashDate_Changed"
+                                    ToolTip="Custom range start" />
+                        <TextBlock Text="to" VerticalAlignment="Center" Margin="6,0,6,0"
+                                   Foreground="{StaticResource BrandSubtleTextBrush}" />
+                        <DatePicker x:Name="DashToDate" Width="125" SelectedDateChanged="DashDate_Changed"
+                                    ToolTip="Custom range end (inclusive)" />
+                    </StackPanel>
                     <Button Content="Refresh" Style="{StaticResource GhostButton}"
                             Click="Refresh_Click" />
                 </WrapPanel>

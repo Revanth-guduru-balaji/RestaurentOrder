@@ -165,7 +165,7 @@ There are no registry entries, services, or system-wide installs to clean up.
 | Receipt cut off on a thermal printer | Enable **Compact receipt** in Settings and verify the paper width in the Windows printer properties. |
 | "print failed: …" toast | The Windows print spooler rejected the job. Check the printer is online; click **Test print** in Settings to isolate the issue. |
 | Excel import says "invalid price" | Column C must be a number. Currency formatting in Excel is fine; text like "Rs. 50" is not. |
-| Lost orders after a crash | Restore `restaurant.db` from your last backup. Orders are committed in a single transaction, so partial writes shouldn't happen. |
+| Lost orders after a crash | Restore `restaurant.db` from your last backup. Each order's stock deduction and order record are written in one SQLite transaction (WAL mode), so a crash leaves the database consistent — you either have the whole order or none of it. If the file itself is ever found unreadable on launch, the app moves it aside as `restaurant.db.corrupt-…` and starts fresh, and tells you. |
 | App won't start, no error window | Check `%LocalAppData%\RestaurantOrder\` is writable. Anti-virus quarantine can also block the unpacked single-file exe — whitelist it. |
 
 ---

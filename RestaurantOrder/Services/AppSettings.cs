@@ -68,6 +68,9 @@ public class AppSettings
                     // saved settings.json files don't keep printing 'Araya'.
                     if (string.Equals(s.ShopName, "Araya Vysya SSV", StringComparison.OrdinalIgnoreCase))
                         s.ShopName = "Arya Vysya SSV";
+                    // Defend money math against a hand-edited / corrupted file:
+                    // the Settings UI validates on write, but Load is the source of truth.
+                    Clamp(s);
                     return s;
                 }
             }
@@ -76,9 +79,23 @@ public class AppSettings
         return new AppSettings();
     }
 
+    private static void Clamp(AppSettings s)
+    {
+        if (s.TaxPercent < 0m) s.TaxPercent = 0m;
+        if (s.TaxPercent > 100m) s.TaxPercent = 100m;
+        if (s.LowStockThreshold < 0) s.LowStockThreshold = 0;
+    }
+
     public void Save()
     {
+        Clamp(this);
         var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(SettingsPath, json);
+        var path = SettingsPath;
+        var tmp = path + ".tmp";
+        // Write-then-replace so a crash or full disk mid-write can't truncate the
+        // existing settings.json into a corrupt file.
+        File.WriteAllText(tmp, json);
+        if (File.Exists(path)) File.Replace(tmp, path, null);
+        else File.Move(tmp, path);
     }
 }

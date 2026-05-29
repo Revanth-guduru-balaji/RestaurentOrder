@@ -55,7 +55,7 @@ public static class MenuRepository
         Id = rdr.GetInt32(0),
         Name = rdr.GetString(1),
         Category = rdr.GetString(2),
-        Price = (decimal)rdr.GetDouble(3),
+        Price = Database.ReadMoney(rdr.GetDouble(3)),
         IsAvailable = rdr.GetInt32(4) == 1,
         EstimatedAvailableQty = rdr.GetInt32(5),
         AvailableQty = rdr.GetInt32(6),
@@ -74,7 +74,7 @@ public static class MenuRepository
         cmd.Parameters.AddWithValue("$a", item.IsAvailable ? 1 : 0);
         cmd.Parameters.AddWithValue("$eq", item.EstimatedAvailableQty);
         cmd.Parameters.AddWithValue("$aq", item.EstimatedAvailableQty > 0 ? item.EstimatedAvailableQty : 0);
-        cmd.Parameters.AddWithValue("$d", System.DateTime.Today.ToString("yyyy-MM-dd"));
+        cmd.Parameters.AddWithValue("$d", System.DateTime.Today.ToString(Database.DateFmt, System.Globalization.CultureInfo.InvariantCulture));
         var id = (long)(cmd.ExecuteScalar() ?? 0L);
         item.Id = (int)id;
         item.AvailableQty = item.EstimatedAvailableQty > 0 ? item.EstimatedAvailableQty : 0;
@@ -144,7 +144,10 @@ public static class MenuRepository
         foreach (var i in items)
         {
             using var sel = conn.CreateCommand();
-            sel.CommandText = "SELECT Id FROM MenuItems WHERE Name = $n LIMIT 1";
+            // Case-insensitive match to align with FindByName and the in-app editor's
+            // duplicate rule, so re-importing "tea" updates an existing "Tea" instead
+            // of inserting a duplicate row.
+            sel.CommandText = "SELECT Id FROM MenuItems WHERE LOWER(Name) = LOWER($n) LIMIT 1";
             sel.Parameters.AddWithValue("$n", i.Name);
             var existingId = sel.ExecuteScalar();
             if (existingId != null && existingId != System.DBNull.Value)

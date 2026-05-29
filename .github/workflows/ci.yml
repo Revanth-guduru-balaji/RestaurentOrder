@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore RestaurantOrder.slnx
+
+      - name: Build (Release)
+        run: dotnet build RestaurantOrder.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test RestaurantOrder.Tests/RestaurantOrder.Tests.csproj -c Release
+
+      - name: Audit dependencies for known vulnerabilities
+        run: dotnet list RestaurantOrder/RestaurantOrder.csproj package --vulnerable --include-transitive
+
+  publish-smoke:
+    runs-on: windows-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish self-contained single-file (win-x64) smoke test
+        run: >
+          dotnet publish RestaurantOrder/RestaurantOrder.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true

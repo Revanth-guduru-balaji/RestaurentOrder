@@ -15,6 +15,10 @@ public class ImportResult
 
 public static class ExcelService
 {
+    private const decimal MaxPrice = 1_000_000m;
+    private const int MaxNameLength = 120;
+    private const int MaxCategoryLength = 60;
+
     public static ImportResult ImportMenu(string path)
     {
         var result = new ImportResult();
@@ -69,6 +73,12 @@ public static class ExcelService
                 result.Skipped++;
                 continue;
             }
+            if (price > MaxPrice)
+            {
+                result.Errors.Add($"Row {r}: price {price} exceeds the maximum of {MaxPrice}");
+                result.Skipped++;
+                continue;
+            }
             bool available = true;
             if (!string.IsNullOrWhiteSpace(availText))
             {
@@ -77,9 +87,15 @@ public static class ExcelService
                 else if (t is "0" or "false" or "no" or "n" or "unavailable") available = false;
                 else
                 {
-                    result.Errors.Add($"Row {r}: '{availText}' not understood for Available — assumed Yes");
+                    // Never put an item live on an unrecognized token — default to
+                    // hidden (Unavailable) and flag it so the operator can correct it.
+                    available = false;
+                    result.Errors.Add($"Row {r}: '{availText}' not understood for Available — marked Unavailable");
                 }
             }
+            // Cap lengths so a malformed cell can't store an unbounded string.
+            if (name.Length > MaxNameLength) name = name.Substring(0, MaxNameLength);
+            if (category.Length > MaxCategoryLength) category = category.Substring(0, MaxCategoryLength);
             items.Add(new MenuItem
             {
                 Name = name,
@@ -91,6 +107,39 @@ public static class ExcelService
 
         result.Imported = MenuRepository.BulkUpsertByName(items);
         return result;
+    }
+
+    /// Export the current menu/inventory to an .xlsx. The first four columns
+    /// match the import format (so an exported file can be edited and re-imported);
+    /// the last two are informational stock columns.
+    public static void ExportMenu(string path, IEnumerable<MenuItem> items)
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Menu");
+
+        ws.Cell(1, 1).Value = "Name";
+        ws.Cell(1, 2).Value = "Category";
+        ws.Cell(1, 3).Value = "Price";
+        ws.Cell(1, 4).Value = "Available";
+        ws.Cell(1, 5).Value = "EstimatedQty";
+        ws.Cell(1, 6).Value = "AvailableQty";
+        var hdr = ws.Range(1, 1, 1, 6);
+        hdr.Style.Font.Bold = true;
+        hdr.Style.Fill.BackgroundColor = XLColor.FromHtml("#FFE5E7EB");
+
+        int r = 2;
+        foreach (var i in items)
+        {
+            ws.Cell(r, 1).Value = i.Name;
+            ws.Cell(r, 2).Value = i.Category ?? "";
+            ws.Cell(r, 3).Value = (double)i.Price;
+            ws.Cell(r, 4).Value = i.IsAvailable ? "Yes" : "No";
+            ws.Cell(r, 5).Value = i.EstimatedAvailableQty;
+            ws.Cell(r, 6).Value = i.AvailableQty;
+            r++;
+        }
+        ws.Columns().AdjustToContents();
+        wb.SaveAs(path);
     }
 
     public static void WriteSampleTemplate(string path)

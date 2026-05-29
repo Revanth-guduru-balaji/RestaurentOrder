@@ -69,7 +69,7 @@ public partial class InventoryPage : UserControl
         KpiLowValue.Text = low.ToString();
         KpiLowSub.Text = $"below threshold of {AppSettings.Current.LowStockThreshold}";
         KpiOutValue.Text = outCount.ToString();
-        KpiValueValue.Text = "₹ " + value.ToString("N0", CultureInfo.InvariantCulture);
+        KpiValueValue.Text = Money.Format(value, withDecimals: false);
 
         var cats = _all.Select(i => string.IsNullOrWhiteSpace(i.Category) ? "Other" : i.Category)
                        .Distinct().Count();
@@ -259,7 +259,7 @@ public partial class InventoryPage : UserControl
         Refresh();
     }
 
-    private void DownloadSample_Click(object sender, RoutedEventArgs e)
+    private async void DownloadSample_Click(object sender, RoutedEventArgs e)
     {
         var sfd = new SaveFileDialog
         {
@@ -267,41 +267,93 @@ public partial class InventoryPage : UserControl
             FileName = "menu-sample.xlsx",
             Title = "Save sample template"
         };
-        if (sfd.ShowDialog() == true)
+        if (sfd.ShowDialog() != true) return;
+        var path = sfd.FileName;
+        var btn = sender as Button;
+        if (btn != null) btn.IsEnabled = false;
+        try
         {
-            try
-            {
-                ExcelService.WriteSampleTemplate(sfd.FileName);
-                MessageBox.Show("Template saved.\nEdit the rows and use 'Import Excel' to load.",
-                    "Sample saved", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Could not save template: " + ex.Message,
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            // Building/saving the workbook is off the UI thread so the window stays responsive.
+            await Task.Run(() => ExcelService.WriteSampleTemplate(path));
+            MessageBox.Show("Template saved.\nEdit the rows and use 'Import Excel' to load.",
+                "Sample saved", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Could not save template: " + ex.Message,
+                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            if (btn != null) btn.IsEnabled = true;
         }
     }
 
-    private void ImportExcel_Click(object sender, RoutedEventArgs e)
+    private async void ExportExcel_Click(object sender, RoutedEventArgs e)
+    {
+        if (_all.Count == 0)
+        {
+            MessageBox.Show("There are no items to export.", "Export Excel",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var sfd = new SaveFileDialog
+        {
+            Filter = "Excel files|*.xlsx",
+            FileName = $"menu-{DateTime.Today:yyyy-MM-dd}.xlsx",
+            Title = "Export inventory"
+        };
+        if (sfd.ShowDialog() != true) return;
+        var path = sfd.FileName;
+        var items = _all.ToList(); // stable snapshot for the background thread
+        var btn = sender as Button;
+        if (btn != null) btn.IsEnabled = false;
+        try
+        {
+            await Task.Run(() => ExcelService.ExportMenu(path, items));
+            MessageBox.Show($"Exported {items.Count} item(s) to:\n{path}",
+                "Export complete", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Export failed: " + ex.Message, "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            if (btn != null) btn.IsEnabled = true;
+        }
+    }
+
+    private async void ImportExcel_Click(object sender, RoutedEventArgs e)
     {
         var ofd = new OpenFileDialog { Filter = "Excel files|*.xlsx;*.xls", Title = "Import menu" };
         if (ofd.ShowDialog() != true) return;
-
+        var path = ofd.FileName;
+        var btn = sender as Button;
+        if (btn != null) btn.IsEnabled = false;
         try
         {
-            var result = ExcelService.ImportMenu(ofd.FileName);
+            // Parse + upsert on a background thread so a large file can't freeze the UI.
+            var result = await Task.Run(() => ExcelService.ImportMenu(path));
             var msg = $"Imported / updated {result.Imported} item(s).";
             if (result.Skipped > 0)
                 msg += $"\nSkipped {result.Skipped} row(s).";
             if (result.Errors.Count > 0)
-                msg += "\n\nFirst issues:\n• " + string.Join("\n• ", result.Errors.Take(5));
+            {
+                msg += $"\n\n{result.Errors.Count} issue(s); first few:\n• "
+                     + string.Join("\n• ", result.Errors.Take(5));
+            }
             MessageBox.Show(msg, "Import complete", MessageBoxButton.OK, MessageBoxImage.Information);
             Refresh();
         }
         catch (Exception ex)
         {
             MessageBox.Show("Import failed: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            if (btn != null) btn.IsEnabled = true;
         }
     }
 }
@@ -352,7 +404,7 @@ public class RowVm
             Source = i,
             Name = i.Name,
             Category = string.IsNullOrWhiteSpace(i.Category) ? "Other" : i.Category,
-            PriceText = "₹ " + i.Price.ToString("N2", CultureInfo.InvariantCulture),
+            PriceText = Money.Format(i.Price),
             MetaText = BuildMeta(i),
             SwatchLetter = letter,
             SwatchBg = bg,

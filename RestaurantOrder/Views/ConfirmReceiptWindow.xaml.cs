@@ -26,9 +26,13 @@ public partial class ConfirmReceiptWindow : Window
     {
         try
         {
-            if (ReceiptPrinter.PrintWithDialog(_order, _printKitchen))
+            var result = ReceiptPrinter.PrintWithDialog(_order, _printKitchen);
+            if (result.BillPrinted)
             {
                 Printed = true;
+                if (result.KitchenFailed)
+                    MessageBox.Show("The customer bill printed, but the KITCHEN copy did not. Please reprint the kitchen ticket.",
+                        "Kitchen ticket failed", MessageBoxButton.OK, MessageBoxImage.Warning);
                 Close();
             }
         }

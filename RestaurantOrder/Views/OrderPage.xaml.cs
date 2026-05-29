@@ -33,9 +33,17 @@ public partial class OrderPage : UserControl
     private bool _suppressDraftSave;
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
 
+    // One reusable toast timer (instead of allocating one per toast) so nothing
+    // is left running on the dispatcher after the page is navigated away.
+    private readonly DispatcherTimer _toastTimer = new();
+
     private class CartLine
     {
         public MenuItem Item { get; init; } = new();
+        // Price quoted when the line was added — preserved even if the live menu
+        // price changes while a draft is held, so a customer is billed what they
+        // were quoted. Item is used only for stock/availability and display name.
+        public decimal UnitPrice { get; set; }
         public int Qty { get; set; }
     }
 
@@ -46,6 +54,7 @@ public partial class OrderPage : UserControl
         Unloaded += OrderPage_Unloaded;
         _clock.Tick += (_, _) => UpdateClock();
         _saveTimer.Tick += (_, _) => { _saveTimer.Stop(); FlushActiveDraft(); };
+        _toastTimer.Tick += (_, _) => { _toastTimer.Stop(); ToastBorder.Visibility = Visibility.Collapsed; };
         // F9 = Place & Print, F4 = focus search
         PreviewKeyDown += (_, e) =>
         {
@@ -84,6 +93,7 @@ public partial class OrderPage : UserControl
     private void OrderPage_Unloaded(object sender, RoutedEventArgs e)
     {
         _clock.Stop();
+        _toastTimer.Stop();
         if (_saveTimer.IsEnabled) { _saveTimer.Stop(); FlushActiveDraft(); }
     }
 
@@ -181,12 +191,12 @@ public partial class OrderPage : UserControl
             {
                 MenuItemId = line.Item.Id,
                 MenuItemName = line.Item.Name,
-                UnitPrice = line.Item.Price,
+                UnitPrice = line.UnitPrice,
                 Quantity = line.Qty
             });
         }
         _activeDraft.CustomerName = string.IsNullOrWhiteSpace(CustomerNameBox.Text) ? null : CustomerNameBox.Text.Trim();
-        _activeDraft.PaymentMethod = PayCash.IsChecked == true ? "Cash" : (PayUpi.IsChecked == true ? "UPI" : "Card");
+        _activeDraft.PaymentMethod = SelectedPaymentMethod();
         _activeDraft.IsParcel = ParcelBox.IsChecked == true;
         _activeDraft.DiscountAmount = GetDiscount();
         _activeDraft.UpdatedAt = DateTime.Now;
@@ -216,7 +226,9 @@ public partial class OrderPage : UserControl
                         Name = it.MenuItemName,
                         Price = it.UnitPrice
                     };
-                    _cart[it.MenuItemId] = new CartLine { Item = menuItem, Qty = it.Quantity };
+                    // Preserve the price quoted when the item was added, even if the
+                    // live menu price has since changed. Item is used only for stock.
+                    _cart[it.MenuItemId] = new CartLine { Item = menuItem, UnitPrice = it.UnitPrice, Qty = it.Quantity };
                 }
                 CustomerNameBox.Text = _activeDraft.CustomerName ?? "";
                 ParcelBox.IsChecked = _activeDraft.IsParcel;
@@ -393,6 +405,9 @@ public partial class OrderPage : UserControl
     // --------------------------------------------------------------------
     private void ReloadMenu()
     {
+        // Re-apply the daily reset on every reload so a terminal left open across
+        // midnight refreshes stock for the new day (cheap, gated, usually a no-op).
+        try { Database.ResetDailyStockIfNeeded(); } catch { }
         _allItems.Clear();
         _allItems.AddRange(MenuRepository.GetAll(onlyAvailable: true));
         BuildCategoryTabs();
@@ -608,7 +623,7 @@ public partial class OrderPage : UserControl
                 ShowToast($"{item.Name} is out of stock", isError: true);
                 return;
             }
-            _cart[item.Id] = new CartLine { Item = item, Qty = 1 };
+            _cart[item.Id] = new CartLine { Item = item, UnitPrice = item.Price, Qty = 1 };
         }
         RenderCart();
         RenderMenu();
@@ -657,7 +672,7 @@ public partial class OrderPage : UserControl
         foreach (var kv in _cart)
         {
             var ln = kv.Value;
-            total += ln.Item.Price * ln.Qty;
+            total += ln.UnitPrice * ln.Qty;
             count += ln.Qty;
             CartList.Children.Add(BuildCartRow(ln));
         }
@@ -759,7 +774,7 @@ public partial class OrderPage : UserControl
         });
         info.Children.Add(new TextBlock
         {
-            Text = $"{Money.Format(line.Item.Price)} each",
+            Text = $"{Money.Format(line.UnitPrice)} each",
             Foreground = (Brush)Application.Current.Resources["BrandSubtleTextBrush"],
             FontSize = 11,
             Margin = new Thickness(0, 1, 0, 4)
@@ -827,7 +842,7 @@ public partial class OrderPage : UserControl
         };
         rightStack.Children.Add(new TextBlock
         {
-            Text = Money.Format(line.Item.Price * line.Qty),
+            Text = Money.Format(line.UnitPrice * line.Qty),
             FontSize = 14,
             FontWeight = FontWeights.Bold,
             HorizontalAlignment = HorizontalAlignment.Right,
@@ -916,6 +931,11 @@ public partial class OrderPage : UserControl
         RebuildDraftTabs();
     }
 
+    private string SelectedPaymentMethod()
+        => PayCash.IsChecked == true ? PaymentMethods.Cash
+         : PayUpi.IsChecked == true ? PaymentMethods.Upi
+         : PaymentMethods.Card;
+
     private void PlaceAndPrint_Click(object sender, RoutedEventArgs e)
     {
         if (_cart.Count == 0)
@@ -927,29 +947,22 @@ public partial class OrderPage : UserControl
         var deductions = _cart.Values
             .Select(l => (l.Item.Id, l.Qty))
             .ToList();
-        if (!MenuRepository.TryDeductStock(deductions))
-        {
-            ShowToast("Stock changed since you started — refreshing menu", isError: true);
-            ReloadMenu();
-            return;
-        }
 
         var order = new Order
         {
             CreatedAt = DateTime.Now,
             CustomerName = string.IsNullOrWhiteSpace(CustomerNameBox.Text) ? null : CustomerNameBox.Text.Trim(),
-            PaymentMethod = PayCash.IsChecked == true ? "Cash" : (PayUpi.IsChecked == true ? "UPI" : "Card"),
+            PaymentMethod = SelectedPaymentMethod(),
             IsParcel = ParcelBox.IsChecked == true
         };
         decimal subtotal = 0;
-        foreach (var kv in _cart)
+        foreach (var line in _cart.Values)
         {
-            var line = kv.Value;
             var item = new OrderItem
             {
                 MenuItemId = line.Item.Id,
                 MenuItemName = line.Item.Name,
-                UnitPrice = line.Item.Price,
+                UnitPrice = line.UnitPrice,
                 Quantity = line.Qty
             };
             order.Items.Add(item);
@@ -962,53 +975,78 @@ public partial class OrderPage : UserControl
         order.RoundingAmount = bd.RoundingAmount;
         order.Total = bd.Total;
 
-        OrderRepository.Create(order);
-
-        bool printed = false;
-        string? printError = null;
-        var settings = AppSettings.Current;
-        if (settings.PrintAfterPlace)
+        // Reserve stock AND record the order in one transaction. Either both
+        // happen or neither does — no window where stock drops without a sale.
+        OrderRepository.PlaceOutcome outcome;
+        try
         {
-            if (settings.AutoPrint)
-            {
-                // First print (the only one that should ever produce a kitchen
-                // ticket): customer bill + kitchen copy.
-                try { printed = ReceiptPrinter.PrintQuiet(order, printKitchen: true); }
-                catch (Exception ex) { printError = ex.Message; }
-            }
-            else
-            {
-                try
-                {
-                    var preview = new ConfirmReceiptWindow(order, printKitchen: true)
-                    {
-                        Owner = Window.GetWindow(this)
-                    };
-                    preview.ShowDialog();
-                    printed = preview.Printed;
-                }
-                catch (Exception ex) { printError = ex.Message; }
-            }
+            outcome = OrderRepository.CreateWithStock(order, deductions);
+        }
+        catch (Exception ex)
+        {
+            RestaurantOrder.App.Log("Place order", ex);
+            ShowToast("Couldn't save the order — nothing was charged or deducted. Please try again.", isError: true);
+            ReloadMenu();
+            return;
+        }
+        if (!outcome.Ok)
+        {
+            ShowToast($"Stock changed — not enough {outcome.ShortItemName}. Refreshing menu.", isError: true);
+            ReloadMenu();
+            return;
         }
 
-        // Order is committed — drop the held draft so it doesn't reappear on
-        // the next launch as an in-progress cart.
-        if (_activeDraft != null)
-        {
-            var placed = _activeDraft;
-            DeleteDraft(placed); // also creates an empty fallback draft
-        }
+        // Order is committed — drop the held draft so it doesn't reappear on the
+        // next launch as an in-progress cart, then refresh the screen.
+        if (_activeDraft != null) DeleteDraft(_activeDraft); // also creates an empty fallback draft
         ReloadMenu();
         RenderActiveDraft();
 
-        if (printError != null)
-            ShowToast($"Order #{order.Id:D5} saved · print failed: {printError}", isError: true);
-        else if (printed)
-            ShowToast($"Order #{order.Id:D5} placed & printed", isError: false);
-        else if (settings.PrintAfterPlace)
-            ShowToast($"Order #{order.Id:D5} placed (not printed)", isError: false);
-        else
+        var settings = AppSettings.Current;
+        if (!settings.PrintAfterPlace)
+        {
             ShowToast($"Order #{order.Id:D5} placed", isError: false);
+            return;
+        }
+
+        if (settings.AutoPrint)
+        {
+            // Spool off the UI thread so a slow/offline printer can't freeze the
+            // POS; report the real outcome (incl. a failed kitchen copy) when done.
+            ShowToast($"Order #{order.Id:D5} placed — printing…", isError: false);
+            ReceiptPrinter.PrintQuietAsync(order, printKitchen: true, result => OnPrintCompleted(order, result));
+        }
+        else
+        {
+            try
+            {
+                var preview = new ConfirmReceiptWindow(order, printKitchen: true)
+                {
+                    Owner = Window.GetWindow(this)
+                };
+                preview.ShowDialog();
+                ShowToast(preview.Printed
+                    ? $"Order #{order.Id:D5} placed & printed"
+                    : $"Order #{order.Id:D5} placed (not printed)", isError: false);
+            }
+            catch (Exception ex)
+            {
+                ShowToast($"Order #{order.Id:D5} saved · print failed: {ex.Message}", isError: true);
+            }
+        }
+    }
+
+    // Runs back on the UI thread after the async spool finishes.
+    private void OnPrintCompleted(Order order, PrintResult result)
+    {
+        if (result.Error != null)
+            ShowToast($"Order #{order.Id:D5} saved · print FAILED — reprint from Order History", isError: true);
+        else if (!result.BillPrinted)
+            ShowToast($"Order #{order.Id:D5} placed (not printed)", isError: false);
+        else if (result.KitchenFailed)
+            ShowToast($"Order #{order.Id:D5} printed · KITCHEN COPY FAILED — reprint it!", isError: true);
+        else
+            ShowToast($"Order #{order.Id:D5} placed & printed", isError: false);
     }
 
     private void ShowToast(string text, bool isError)
@@ -1016,8 +1054,8 @@ public partial class OrderPage : UserControl
         ToastText.Text = text;
         ToastBorder.Background = (Brush)Application.Current.Resources[isError ? "BrandDangerBrush" : "BrandSuccessBrush"];
         ToastBorder.Visibility = Visibility.Visible;
-        var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(isError ? 6 : 3) };
-        t.Tick += (_, _) => { ToastBorder.Visibility = Visibility.Collapsed; t.Stop(); };
-        t.Start();
+        _toastTimer.Stop();
+        _toastTimer.Interval = TimeSpan.FromSeconds(isError ? 6 : 3);
+        _toastTimer.Start();
     }
 }

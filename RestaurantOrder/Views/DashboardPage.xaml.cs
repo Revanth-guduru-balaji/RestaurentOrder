@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using RestaurantOrder.Controls;
 using RestaurantOrder.Data;
 using RestaurantOrder.Services;
@@ -14,11 +15,19 @@ namespace RestaurantOrder.Views;
 public partial class DashboardPage : UserControl
 {
     private string _range = "Today";
+    private bool _suppressRange;
 
     public DashboardPage()
     {
         InitializeComponent();
-        Loaded += (_, _) => LoadAll();
+        // Seed the custom-range pickers (used only when the Custom segment is on).
+        _suppressRange = true;
+        DashFromDate.SelectedDate = DateTime.Today.AddDays(-6);
+        DashToDate.SelectedDate = DateTime.Today;
+        _suppressRange = false;
+        // Defer the metric queries until after the page chrome has painted, so
+        // navigating to the dashboard doesn't stall on a blank screen.
+        Loaded += (_, _) => Dispatcher.BeginInvoke(new Action(LoadAll), DispatcherPriority.Background);
     }
 
     private void Range_Click(object sender, RoutedEventArgs e)
@@ -28,6 +37,15 @@ public partial class DashboardPage : UserControl
             _range = tag;
             LoadAll();
         }
+    }
+
+    // Picking a custom date switches the dashboard into Custom mode.
+    private void DashDate_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressRange) return;
+        _range = "Custom";
+        RangeCustom.IsChecked = true;
+        LoadAll();
     }
 
     private void Refresh_Click(object sender, RoutedEventArgs e) => LoadAll();
@@ -56,6 +74,21 @@ public partial class DashboardPage : UserControl
                 prevFrom = from.AddYears(-1); prevTo = from;
                 title = $"Monthly revenue · {now:yyyy}";
                 break;
+            case "Custom":
+            {
+                var fromDay = (DashFromDate.SelectedDate ?? now.Date.AddDays(-6)).Date;
+                var toDay = (DashToDate.SelectedDate ?? now.Date).Date;
+                if (toDay < fromDay) toDay = fromDay;
+                from = fromDay;
+                to = toDay.AddDays(1); // end is inclusive of the selected day
+                var span = to - from;
+                prevFrom = from - span; prevTo = from; // same-length preceding window
+                var lastDay = to.AddDays(-1);
+                title = fromDay == lastDay
+                    ? $"Hourly revenue · {fromDay:dd MMM yyyy}"
+                    : $"Daily revenue · {fromDay:dd MMM} – {lastDay:dd MMM yyyy}";
+                break;
+            }
             default: // Today
                 from = now.Date; to = from.AddDays(1);
                 prevFrom = from.AddDays(-1); prevTo = from;
@@ -86,9 +119,10 @@ public partial class DashboardPage : UserControl
         var avail = allMenu.Count(i => i.IsAvailable);
         MenuItemsAvailText.Text = $"{avail} available";
 
-        // Trend chart
+        // Trend chart — hourly for a single day, monthly for a year, daily otherwise.
         var trendPoints = new List<BarPoint>();
-        if (_range == "Today")
+        bool singleDay = (to - from).TotalDays <= 1.0;
+        if (_range == "Today" || (_range == "Custom" && singleDay))
         {
             var hourly = AnalyticsRepository.HourlyBuckets(from, to);
             // Show useful hours only (8am - 11pm) but include all
@@ -101,18 +135,13 @@ public partial class DashboardPage : UserControl
         }
         else if (_range == "Year")
         {
-            var byMonth = new double[12];
-            for (int m = 0; m < 12; m++)
-            {
-                var mStart = new DateTime(from.Year, m + 1, 1);
-                var mEnd = mStart.AddMonths(1);
-                byMonth[m] = (double)AnalyticsRepository.Summary(mStart, mEnd).revenue;
-            }
+            // One grouped query instead of 12 separate Summary round trips.
+            var byMonth = AnalyticsRepository.MonthlyRevenue(from.Year);
             for (int m = 0; m < 12; m++)
                 trendPoints.Add(new BarPoint
                 {
                     Label = new DateTime(from.Year, m + 1, 1).ToString("MMM", CultureInfo.InvariantCulture),
-                    Value = byMonth[m]
+                    Value = (double)byMonth[m]
                 });
         }
         else

@@ -15,10 +15,18 @@ public readonly struct PriceBreakdown
     public decimal Total { get; init; }
 
     public static PriceBreakdown Compute(decimal subtotal, decimal discount = 0)
+        => Compute(subtotal, discount, AppSettings.Current);
+
+    /// Settings-injected overload — pure and unit-testable without the static singleton.
+    public static PriceBreakdown Compute(decimal subtotal, decimal discount, AppSettings s)
     {
-        var s = AppSettings.Current;
         decimal tax = subtotal * (s.TaxPercent / 100m);
-        decimal afterTaxDisc = subtotal + tax - discount;
+
+        // Never discount more than the bill, and never below zero. Storing the
+        // EFFECTIVE discount keeps the additive invariant intact:
+        //   Total == Subtotal + Tax − Discount + Rounding
+        decimal effectiveDiscount = discount < 0 ? 0m : Math.Min(discount, subtotal + tax);
+        decimal afterTaxDisc = subtotal + tax - effectiveDiscount;
         if (afterTaxDisc < 0) afterTaxDisc = 0;
 
         decimal total = afterTaxDisc;
@@ -29,13 +37,15 @@ public readonly struct PriceBreakdown
             rounding = total - afterTaxDisc;
         }
 
+        // One consistent rounding policy (half-up / away-from-zero) for every
+        // money component — Indian retail expects half-up, not banker's rounding.
         return new PriceBreakdown
         {
-            Subtotal = subtotal,
-            TaxAmount = decimal.Round(tax, 2),
-            DiscountAmount = decimal.Round(discount, 2),
-            RoundingAmount = decimal.Round(rounding, 2),
-            Total = decimal.Round(total, 2),
+            Subtotal = decimal.Round(subtotal, 2, MidpointRounding.AwayFromZero),
+            TaxAmount = decimal.Round(tax, 2, MidpointRounding.AwayFromZero),
+            DiscountAmount = decimal.Round(effectiveDiscount, 2, MidpointRounding.AwayFromZero),
+            RoundingAmount = decimal.Round(rounding, 2, MidpointRounding.AwayFromZero),
+            Total = decimal.Round(total, 2, MidpointRounding.AwayFromZero),
         };
     }
 }

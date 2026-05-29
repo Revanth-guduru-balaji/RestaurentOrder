@@ -13,7 +13,57 @@ public static class OrderRepository
     {
         using var conn = Database.Open();
         using var tx = conn.BeginTransaction();
+        InsertOrderRows(conn, order);
+        tx.Commit();
+        return order.Id;
+    }
 
+    /// Result of an atomic place-order: success, or which tracked item ran short.
+    public readonly record struct PlaceOutcome(bool Ok, string? ShortItemName);
+
+    /// Atomically reserve stock for tracked items AND record the order in ONE
+    /// transaction. Either stock is deducted and the order is saved, or nothing
+    /// changes — there is no window where inventory drops without a recorded sale.
+    public static PlaceOutcome CreateWithStock(Order order, IEnumerable<(int MenuItemId, int Qty)> deductions)
+    {
+        using var conn = Database.Open();
+        using var tx = conn.BeginTransaction();
+
+        foreach (var (id, qty) in deductions)
+        {
+            // Conditional atomic decrement — only a tracked row (Est>0) with enough
+            // stock is affected, so the check and the write can't race.
+            using var upd = conn.CreateCommand();
+            upd.CommandText = @"UPDATE MenuItems
+                                SET AvailableQty = AvailableQty - $q
+                                WHERE Id = $id AND EstimatedAvailableQty > 0 AND AvailableQty >= $q";
+            upd.Parameters.AddWithValue("$q", qty);
+            upd.Parameters.AddWithValue("$id", id);
+            if (upd.ExecuteNonQuery() > 0) continue;
+
+            // rows == 0: distinguish untracked/deleted (allowed) from short (reject).
+            using var chk = conn.CreateCommand();
+            chk.CommandText = "SELECT EstimatedAvailableQty, Name FROM MenuItems WHERE Id = $id";
+            chk.Parameters.AddWithValue("$id", id);
+            using var rdr = chk.ExecuteReader();
+            if (!rdr.Read()) continue;              // deleted item — name/price live on the order row
+            int est = rdr.GetInt32(0);
+            string name = rdr.GetString(1);
+            rdr.Close();
+            if (est <= 0) continue;                 // untracked — unlimited
+            tx.Rollback();
+            return new PlaceOutcome(false, name);   // tracked but insufficient
+        }
+
+        InsertOrderRows(conn, order);
+        tx.Commit();
+        return new PlaceOutcome(true, null);
+    }
+
+    // Inserts the Orders header + OrderItems rows on an already-open connection,
+    // enlisting in whatever transaction is active. Sets order.Id.
+    private static void InsertOrderRows(SqliteConnection conn, Order order)
+    {
         using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = @"INSERT INTO Orders
@@ -46,9 +96,6 @@ public static class OrderRepository
             cmd.Parameters.AddWithValue("$q", it.Quantity);
             cmd.ExecuteNonQuery();
         }
-
-        tx.Commit();
-        return order.Id;
     }
 
     public static List<Order> GetBetween(DateTime from, DateTime to, string? search = null)
@@ -59,7 +106,7 @@ public static class OrderRepository
         {
             var where = "o.CreatedAt >= $f AND o.CreatedAt < $t";
             if (!string.IsNullOrWhiteSpace(search))
-                where += " AND (CAST(o.Id AS TEXT) LIKE $s OR IFNULL(o.CustomerName,'') LIKE $s)";
+                where += @" AND (CAST(o.Id AS TEXT) LIKE $s ESCAPE '\' OR IFNULL(o.CustomerName,'') LIKE $s ESCAPE '\')";
             cmd.CommandText = $@"SELECT o.Id, o.CreatedAt,
                                         o.Subtotal, o.TaxAmount, o.DiscountAmount, o.RoundingAmount,
                                         o.Total, o.PaymentMethod, o.CustomerName, o.Notes, o.IsVoided,
@@ -68,27 +115,43 @@ public static class OrderRepository
                                         o.IsParcel
                                  FROM Orders o
                                  LEFT JOIN (
-                                     SELECT OrderId, COUNT(*) AS LineCount, SUM(Quantity) AS PieceCount
-                                     FROM OrderItems GROUP BY OrderId
+                                     -- Aggregate ONLY the items for orders in the date
+                                     -- window, so this never scans the whole OrderItems
+                                     -- table as history grows.
+                                     SELECT oi.OrderId, COUNT(*) AS LineCount, SUM(oi.Quantity) AS PieceCount
+                                     FROM OrderItems oi
+                                     INNER JOIN Orders o2 ON o2.Id = oi.OrderId
+                                     WHERE o2.CreatedAt >= $f AND o2.CreatedAt < $t
+                                     GROUP BY oi.OrderId
                                  ) s ON s.OrderId = o.Id
                                  WHERE {where}
                                  ORDER BY o.CreatedAt DESC";
             cmd.Parameters.AddWithValue("$f", from.ToString(Iso, CultureInfo.InvariantCulture));
             cmd.Parameters.AddWithValue("$t", to.ToString(Iso, CultureInfo.InvariantCulture));
             if (!string.IsNullOrWhiteSpace(search))
-                cmd.Parameters.AddWithValue("$s", "%" + search + "%");
+            {
+                // Escape LIKE metacharacters so a literal % or _ in the search box
+                // doesn't act as a wildcard (paired with ESCAPE '\' in the clause).
+                var escaped = search.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+                cmd.Parameters.AddWithValue("$s", "%" + escaped + "%");
+            }
             using var rdr = cmd.ExecuteReader();
             while (rdr.Read())
             {
+                // Skip a row with a malformed timestamp rather than throwing and
+                // taking down the entire history view.
+                if (!DateTime.TryParseExact(rdr.GetString(1), Iso, CultureInfo.InvariantCulture,
+                        DateTimeStyles.None, out var createdAt))
+                    continue;
                 orders.Add(new Order
                 {
                     Id = rdr.GetInt32(0),
-                    CreatedAt = DateTime.ParseExact(rdr.GetString(1), Iso, CultureInfo.InvariantCulture),
-                    Subtotal = (decimal)rdr.GetDouble(2),
-                    TaxAmount = (decimal)rdr.GetDouble(3),
-                    DiscountAmount = (decimal)rdr.GetDouble(4),
-                    RoundingAmount = (decimal)rdr.GetDouble(5),
-                    Total = (decimal)rdr.GetDouble(6),
+                    CreatedAt = createdAt,
+                    Subtotal = Database.ReadMoney(rdr.GetDouble(2)),
+                    TaxAmount = Database.ReadMoney(rdr.GetDouble(3)),
+                    DiscountAmount = Database.ReadMoney(rdr.GetDouble(4)),
+                    RoundingAmount = Database.ReadMoney(rdr.GetDouble(5)),
+                    Total = Database.ReadMoney(rdr.GetDouble(6)),
                     PaymentMethod = rdr.GetString(7),
                     CustomerName = rdr.IsDBNull(8) ? null : rdr.GetString(8),
                     Notes = rdr.IsDBNull(9) ? null : rdr.GetString(9),
@@ -136,8 +199,11 @@ public static class OrderRepository
             {
                 // Only adjust tracked items (EstimatedAvailableQty > 0).
                 using var upd = conn.CreateCommand();
+                // Clamp BOTH ends: never below 0, never above the daily estimate.
+                // The upper clamp stops a cross-day void (after the overnight reset
+                // refilled AvailableQty) from inflating stock above what exists.
                 upd.CommandText = @"UPDATE MenuItems
-                                    SET AvailableQty = MAX(0, AvailableQty + ($s) * $q)
+                                    SET AvailableQty = MIN(EstimatedAvailableQty, MAX(0, AvailableQty + ($s) * $q))
                                     WHERE Id = $mi AND EstimatedAvailableQty > 0";
                 upd.Parameters.AddWithValue("$s", sign);
                 upd.Parameters.AddWithValue("$q", qty);
@@ -212,7 +278,7 @@ public static class OrderRepository
                 OrderId = rdr.GetInt32(1),
                 MenuItemId = rdr.GetInt32(2),
                 MenuItemName = rdr.GetString(3),
-                UnitPrice = (decimal)rdr.GetDouble(4),
+                UnitPrice = Database.ReadMoney(rdr.GetDouble(4)),
                 Quantity = rdr.GetInt32(5),
             });
         }

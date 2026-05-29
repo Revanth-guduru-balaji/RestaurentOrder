@@ -46,7 +46,7 @@ For end-to-end install / configure / backup / troubleshooting steps, see [`SETUP
 
 ### 📊 Dashboard
 - KPIs: revenue, orders, average ticket, available menu items
-- Period selector: Today / Week / Month / Year (vs previous period)
+- Period selector: Today / Week / Month / Year, or a **Custom from–to range** (vs previous period)
 - Revenue trend (hourly for Today, daily for Week/Month, monthly for Year)
 - Top items, orders-by-hour, category breakdown bars
 
@@ -60,7 +60,8 @@ For end-to-end install / configure / backup / troubleshooting steps, see [`SETUP
 - Add, edit (in-grid), delete menu items
 - Mark items unavailable to hide them from order taking without losing history
 - **Download Sample Excel** writes a `menu-sample.xlsx` template
-- **Import from Excel** does an upsert by Name (so re-importing updates prices)
+- **Import from Excel** does an upsert by Name (case-insensitive, so re-importing updates prices)
+- **Export Excel** saves the current inventory to an `.xlsx` (re-importable)
 
 ### 📜 Order History
 - Filter by date range; quick-pick Today / Week / Month buttons
