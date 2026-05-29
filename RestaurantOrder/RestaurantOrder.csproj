@@ -15,9 +15,9 @@
 
     <!-- Identity stamped into the published exe (visible in Explorer file
          properties) and logged in crash.log for support triage. -->
-    <Version>1.1.0</Version>
-    <FileVersion>1.1.0.0</FileVersion>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <Version>1.5.0</Version>
+    <FileVersion>1.5.0.0</FileVersion>
+    <AssemblyVersion>1.5.0.0</AssemblyVersion>
     <Company>Arya Vysya SSV</Company>
     <Product>Restaurant Manager</Product>
     <Copyright>© Arya Vysya SSV</Copyright>
